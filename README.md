@@ -120,8 +120,8 @@ containerlab version
 Clone o repositório e acesse o diretório do laboratório:
 
 ```bash
-git clone https://github.com/marcioclay/TE_eBPF.git
-cd TE_eBPF
+git clone https://github.com/marcioclay/Mestrado.git
+cd Mestrado
 ```
 Instalação de imagem ubuntu com ebpf
 ```
