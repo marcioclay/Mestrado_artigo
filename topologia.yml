@@ -2,10 +2,13 @@ name: seg
 
 topology:
   nodes:
+    br-lan:
+      kind: bridge
+
     gateway:
       kind: linux
       image: ebpf-host:latest
-             # --- LIMITES DE RECURSOS (Simulando Raspberry Pi 4) ---
+      # --- LIMITES DE RECURSOS (Simulando Raspberry Pi 4) ---
       cpu: 4.0          # Limita o uso a 4 núcleos de CPU
       memory: "4g"      # Limita a memória RAM a 4 Gigabytes 
       binds:
@@ -14,9 +17,7 @@ topology:
         - /lib/modules:/lib/modules
         - /usr/sbin/bpftool:/usr/sbin/bpftool
       exec:
-        # Ativa o encaminhamento de pacotes no Gateway (IP Forwarding)
         - sysctl -w net.ipv4.ip_forward=1
-        # Configuração das interfaces no Gateway
         - ip addr add 10.0.1.1/24 dev eth2
         - ip addr add 10.0.2.1/24 dev eth1
 
@@ -25,10 +26,6 @@ topology:
       image: ubuntu:latest
       binds:
         - ./scripts:/scripts
-      exec:
-        - ip addr add 10.0.2.10/24 dev eth1
-        # Rota default apontando para o Gateway
-        - ip route replace default via 10.0.2.1
 
     sensor:
       kind: linux
@@ -37,7 +34,6 @@ topology:
         - ./scripts:/scripts
       exec:
         - ip addr add 10.0.1.10/24 dev eth1
-        # Rota default apontando para o Gateway
         - ip route replace default via 10.0.1.1
 
     atacante:
@@ -45,12 +41,9 @@ topology:
       image: ubuntu:latest
       binds:
         - ./scripts:/scripts
-      exec:
-        - ip addr add 10.0.1.20/24 dev eth1
-        # Rota default apontando para o Gateway
-        - ip route replace default via 10.0.1.1
 
   links:
+    - endpoints: ["sensor:eth1", "br-lan:eth1"]
+    - endpoints: ["atacante:eth1", "br-lan:eth2"]
+    - endpoints: ["gateway:eth2", "br-lan:eth3"]
     - endpoints: ["gateway:eth1", "mqtt:eth1"]
-    - endpoints: ["gateway:eth2", "sensor:eth1"]
-    - endpoints: ["gateway:eth3", "atacante:eth1"]
