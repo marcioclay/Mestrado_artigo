@@ -1,4 +1,4 @@
-# Guia de Testes e Validação do Ataque SlowTTe no MQTT
+# Guia de Testes e Validação do Ataque SlowTT no MQTT
 
 Este documento descreve o procedimento passo a passo para reproduzir o ataque SlowTT (Slow Denial of Service against MQTT) em uma topologia virtualizada via Containerlab. O objetivo é simular o impacto do esgotamento de conexões (Socket Exhaustion) em um Broker MQTT intermediado por um Gateway de Borda IoT.
 
