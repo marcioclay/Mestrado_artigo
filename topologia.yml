@@ -2,40 +2,51 @@ name: seg
 
 topology:
   nodes:
+    # Switch/Bridge virtual para a LAN
     br-lan:
       kind: bridge
 
+    # Gateway eBPF (Simulação de hardware restrito de borda)
     gateway:
       kind: linux
       image: ebpf-host:latest
-      # --- LIMITES DE RECURSOS (Simulando Raspberry Pi 4) ---
       cpu: 4.0          # Limita o uso a 4 núcleos de CPU
-      memory: "4g"      # Limita a memória RAM a 4 Gigabytes 
+      memory: "4g"      # Limita a memória RAM a 4 GB
       binds:
         - ./scripts:/scripts
         - /sys/fs/bpf:/sys/fs/bpf
         - /lib/modules:/lib/modules
         - /usr/sbin/bpftool:/usr/sbin/bpftool
-      exec:
-        - sysctl -w net.ipv4.ip_forward=1
-        - ip addr add 10.0.1.1/24 dev eth2
-        - ip addr add 10.0.2.1/24 dev eth1
 
+    # Broker MQTT Mosquitto
     mqtt:
       kind: linux
       image: ubuntu:latest
       binds:
         - ./scripts:/scripts
 
-    sensor:
+    # Dispositivo 1: Sensor Orientado a Evento (Silêncio + Rajada)
+    sensor-evento:
       kind: linux
-      image: nicolaka/netshoot
+      image: ubuntu:latest
       binds:
         - ./scripts:/scripts
-      exec:
-        - ip addr add 10.0.1.10/24 dev eth1
-        - ip route replace default via 10.0.1.1
 
+    # Dispositivo 2: Cliente Subscritor / Dashboard (Apenas SUBSCRIBE)
+    sensor-sub:
+      kind: linux
+      image: ubuntu:latest
+      binds:
+        - ./scripts:/scripts
+
+    # Dispositivo 3: Telemetria Regrada com Jitter/Atraso de Rede
+    sensor-jitter:
+      kind: linux
+      image: ubuntu:latest
+      binds:
+        - ./scripts:/scripts
+
+    # Dispositivo Atacante (Gerador do SlowTT)
     atacante:
       kind: linux
       image: ubuntu:latest
@@ -43,7 +54,12 @@ topology:
         - ./scripts:/scripts
 
   links:
-    - endpoints: ["sensor:eth1", "br-lan:eth1"]
-    - endpoints: ["atacante:eth1", "br-lan:eth2"]
-    - endpoints: ["gateway:eth2", "br-lan:eth3"]
+    # Conexões da LAN (Rede 10.0.1.0/24) via br-lan
+    - endpoints: ["sensor-evento:eth1", "br-lan:eth1"]
+    - endpoints: ["sensor-sub:eth1", "br-lan:eth2"]
+    - endpoints: ["sensor-jitter:eth1", "br-lan:eth3"]
+    - endpoints: ["atacante:eth1", "br-lan:eth4"]
+    - endpoints: ["gateway:eth2", "br-lan:eth5"]
+
+    # Conexão DMZ: Gateway <-> Broker MQTT (Rede 10.0.2.0/24)
     - endpoints: ["gateway:eth1", "mqtt:eth1"]
