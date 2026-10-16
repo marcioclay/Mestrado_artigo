@@ -93,13 +93,6 @@ O cenário experimental considera um atacante que:
 3. Envia mensagens curtas de controle, como `PINGREQ` (`0xC0 0x00`), em intervalos relacionados ao parâmetro `Keep Alive`.
 4. Ocupa recursos de conexão sem necessariamente gerar uma taxa elevada de tráfego.
 
-A condição temporal considerada no cenário é:
-
-\[
-WT < 1.5 \times KeepAlive
-\]
-
-Essa expressão deve ser interpretada como uma hipótese de temporização do experimento, e não como uma regra universal do protocolo MQTT.
 
 ### 3.2. Impacto esperado no broker
 
