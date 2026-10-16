@@ -62,10 +62,12 @@ Em que:
 
 Exemplo conceitual de transições:
 
-- \(q_0 \rightarrow q_1\): recebimento de `CONNECT`.
-- \(q_1 \rightarrow q_{pub}\): recebimento de `PUBLISH`.
-- \(q_1 \rightarrow q_{sub}\): recebimento de `SUBSCRIBE`.
-- \(q_{err}\): estado de classificação de um padrão considerado inválido ou suspeito pelas regras experimentais.
+| Transição ou estado | Significado |
+|---|---|
+| `q₀` → `q₁` | Recebimento de `CONNECT` |
+| `q₁` → `q_pub` | Recebimento de `PUBLISH` |
+| `q₁` → `q_sub` | Recebimento de `SUBSCRIBE` |
+| `q_err` | Estado de classificação de um padrão considerado inválido ou suspeito pelas regras experimentais |
 
 4. **Mitigação:** quando um comportamento satisfaz os critérios de bloqueio, o programa pode registrar o endereço IP em um mapa eBPF, como `blocked_ips_map`, e descartar pacotes subsequentes com `XDP_DROP`.
 
