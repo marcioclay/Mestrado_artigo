@@ -162,6 +162,12 @@ Compile os programas eBPF em C para gerar os arquivos de objeto:
 
 ## 🧪 5. Cenários Experimentais
 
+Terminal 1: Monitoramento no Broker MQTT aberto sempre
+Inicie a escuta contínua de todas as mensagens que chegam ao broker:
+```
+docker exec -it clab-seg-mqtt mosquitto_sub -h 10.0.2.10 -t "iot/#" -v
+```
+
 ### Cenário 1 — Baseline sem proteção
 
 **Objetivo:** estabelecer uma referência de comportamento sem os mecanismos de mitigação avaliados.
