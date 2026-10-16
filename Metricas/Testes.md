@@ -10,15 +10,14 @@ A solução é implantada em um IoT Edge Gateway para mitigar ataques de negaç�
 
 Para garantir a reprodutibilidade científica e comparar a eficiência do mecanismo nos diferentes cenários de teste, são adotadas as seguintes métricas:
 
-| Métrica | Descrição |
-|---|---|
-| **Packet Drop Rate (pps / %)** | Taxa de pacotes maliciosos descartados no nível XDP (`XDP_DROP`), comparada à filtragem na camada Netfilter (`iptables`). |
-| **Consumo de CPU (%)** | Carga de processamento do gateway, considerando a utilização dos núcleos da CPU. |
-| **False Positive Rate (FPR)** | Percentual de mensagens ou conexões legítimas de sensores rejeitadas indevidamente pela defesa. Meta experimental: \(FPR \to 0\). |
-| **Disponibilidade do broker MQTT** | Número de conexões estabelecidas e recursos de conexão disponíveis no Mosquitto durante o ataque. O cenário considera `max_connections = 1024`. |
-| **Latência de decisão no kernel (µs)** | Tempo necessário para o programa eBPF inspecionar os dados disponíveis do protocolo e tomar uma decisão de encaminhamento ou descarte. |
+## Eixos de Métricas Essenciais da Pesquisa
 
-> **Nota metodológica:** a inspeção de mensagens MQTT na camada de aplicação por um programa XDP exige tratamento explícito dos cabeçalhos Ethernet, IP, TCP e dos dados MQTT. A implementação precisa considerar fragmentação, segmentação TCP e pacotes incompletos.
+| Eixo de avaliação | Métricas |
+|---|---|
+| **1. Eficiência da Defesa (L7)** | • Taxa de Falsos Positivos (FPR %). **Meta:** próxima de 0%.<br>• Cadência de Pings / Wait Timeout: \(WT < 1{,}5 \times T\).<br>• Razão de Payload Útil: \(R_{payload} \rightarrow 0\). |
+| **2. Custo do Gateway (Kernel/Edge)** | • Consumo de CPU por core (%).<br>• Latência de decisão no driver XDP (\(\mu s\)). |
+| **3. Impacto no Broker (Alvo/Aplicação)** | • Exaustão de soquetes: \(N_{conn} = 1024\).<br>• Taxa de sucesso/entrega das mensagens dos sensores (%). |
+
 
 ---
 
