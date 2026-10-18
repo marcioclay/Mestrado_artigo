@@ -189,8 +189,7 @@ docker stats clab-seg-mqtt clab-seg-gateway
 ### Terminal 3 — Logs de Conexões do Broker
 
 ```bash
-docker exec -it clab-seg-mqtt \
-  tail -f /var/log/mosquitto/mosquitto.log
+docker exec -it clab-seg-mqtt tail -f /scripts/mosquitto.log
 ```
 
 **Métricas extraídas:**
