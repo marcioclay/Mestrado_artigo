@@ -217,7 +217,7 @@ docker exec -it clab-seg-gateway \
 docker exec -it clab-seg-mqtt \
   mosquitto_sub -h 10.0.2.10 -t "iot/#" -v |
   ts '[%Y-%m-%d %H:%M:%S]' \
-  > /scripts/mensagens_recebidas.log
+  > mensagens_recebidas.log
 ```
 
 **Métrica extraída:** quantidade e horário de recebimento das mensagens legítimas, para calcular a taxa de sucesso das publicações.
