@@ -1,8 +1,8 @@
 # 📊 Relatório Experimental — Cenário 0: Baseline sem Proteção (XDP OFF)
 
-**Data e Hora da Análise:** 2026-10-18 17:54:54
-**Mecanismo de Defesa:** NENHUM (`OFF` - Gateway atuando via roteamento padrão)
-**Arquivo de Captura Principal:** `/Mestrado/scripts/baseline_off.pcap`
+**Data e Hora da Análise:** 2026-10-18 17:54:54  
+**Mecanismo de Defesa:** NENHUM (`OFF` - Gateway atuando via roteamento padrão)  
+**Arquivo de Captura Principal:** `/Mestrado/scripts/baseline_off.pcap`  
 
 ---
 
@@ -11,32 +11,31 @@ Métricas observadas nos contêineres durante a exaustão do ataque SlowTT:
 
 | Contêiner | Função no Experimento | Uso de CPU | Uso de Memória RAM |
 | :--- | :--- | :--- | :--- |
-| `clab-seg-mqtt` | Broker Mosquitto (Alvo) | **0.23** | **26.33** |
-| `clab-seg-gateway` | Gateway eBPF/XDP | **0.00** | **17.12** |
+| `clab-seg-mqtt` | Broker Mosquitto (Alvo) | **0.23%** | **26.33 MiB** |
+| `clab-seg-gateway` | Gateway eBPF/XDP | **0.00%** | **17.12 MiB** |
 
 ---
 
 ## 2. Análise da Camada de Rede e Transporte (L3/L4 - PCAP)
 Métricas extraídas da interface LAN `eth2` do Gateway:
 
-* **Total de Pacotes Capturados:** 63117 pacotes
+* **Total de Pacotes Capturados:** 63.117 pacotes
+* **Duração da Captura:** 763,09 segundos (~12,7 minutos)
+* **Tamanho Total dos Dados:** 4.372.070 bytes (~4,37 MB)
+* **Taxa Média de Pacotes:** **82,71 pps** (pacotes/s)
+* **Largura de Banda Média:** **45,84 kbps**
 * **Pacotes com "TCP Zero Window" (Slow Read):** 391
-* **Resumo Técnico da Captura (`capinfos`):**
-```text
-File name:           /Mestrado/scripts/baseline_off.pcap
-Data size:           4372070 bytes
-Capture duration:    763,091677 seconds
-```
 
 ---
 
 ## 3. Análise da Camada de Aplicação (L7 - MQTT)
 Detalhamento das mensagens do protocolo MQTT interceptadas:
 
-* **Pacotes `CONNECT` (Solicitações de Sessão):** 3101
+* **Pacotes `CONNECT` (Solicitações de Sessão):** 3.101
 * **Pacotes `PUBLISH` (Telemetria Legítima):** 259
-* **Pacotes `PINGREQ` (Manutenção Keep-Alive / SlowTT):** 14286
-* **Mensagens Legítimas Entregues ao Subscriber:** 130
+* **Pacotes `PINGREQ` (Manutenção Keep-Alive / SlowTT):** 14.286
+* **Razão de Payload Útil ($R_{payload}$):** **1,47%**
+* **Mensagens Legítimas Entregues ao Subscriber:** 130 de 259 (Perda/bloqueio de **49,8%**)
 
 ---
 
@@ -54,6 +53,6 @@ Detalhamento das mensagens do protocolo MQTT interceptadas:
 ---
 
 ## 5. Conclusões do Cenário Baseline
-1. **Exaustão de Soquetes:** O ataque SlowTT ocupou 1024 conexões no Mosquitto, consumindo 26.33 de RAM com uso de CPU de 0.23.
-2. **Bloqueio de Clientes Legítimos:** O teste de disponibilidade resultou em `Timed Out`.
-3. **Comportamento do Gateway:** O Gateway sem eBPF/XDP (0.00 CPU / 17.12 RAM) repassou 100% dos pacotes do ataque sem filtragem.
+1. **Exaustão de Soquetes:** O ataque SlowTT ocupou 1024 conexões no Mosquitto, consumindo 26.33 MiB de RAM com uso de CPU de 0.23%.
+2. **Bloqueio e Perda de Telemetria:** O teste de disponibilidade para novos clientes resultou em `Timed Out` e 49,8% das mensagens dos sensores ativos não foram entregues.
+3. **Comportamento do Gateway:** O Gateway sem eBPF/XDP (0.00% CPU / 17.12 MiB RAM) repassou 100% do tráfego malicioso a uma taxa de 45,84 kbps, incapaz de conter o DoS.
