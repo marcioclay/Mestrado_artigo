@@ -232,9 +232,20 @@ docker exec -it clab-seg-mqtt \
 
 No terminal do host, execute:
 
-```bash
+A sequência de testes é a mesma, o que altera é o cenário
+```
+# Desativado
 ./load_xdp.sh off
 ```
+```
+# xdp tradicional com filtro estático
+./load_xdp.sh stateless
+```
+```
+# xdp com dfa
+./load_xdp.sh dfa
+```
+
 
 ### 2. Iniciar os sensores legítimos
 
