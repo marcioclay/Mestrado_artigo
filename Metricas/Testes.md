@@ -152,17 +152,15 @@ Compile os programas eBPF em C para gerar os arquivos de objeto:
 
 ---
 
-# 🧪 5. Cenários Experimentais
+# 🧪 5. Cenários Experimentais Revisitados
 
-## Fase 1 — Preparação e escuta contínua (2 a 5 minutos)
+## Fase 1 — Escuta, Monitoramento e Coleta Contínua de Dados (2 a 5 minutos)
 
-Antes de iniciar qualquer tráfego, prepare o ambiente de captura e monitoramento. Os terminais desta fase devem permanecer abertos durante o experimento, registrando os dados continuamente.
+Antes de iniciar qualquer tráfego, abra os terminais de monitoramento no host. Mantenha-os ativos durante todo o experimento, por um período recomendado de 2 a 5 minutos.
 
-**Duração recomendada:** de 2 a 5 minutos, conforme o planejamento experimental.
+### Terminal 1 — Captura de Pacotes no Gateway
 
-### Terminal 1 — Captura de pacotes no gateway (PCAP)
-
-Inicie a captura do tráfego TCP/MQTT que atravessa a interface LAN `eth2` do gateway:
+**Métricas:** taxa de tráfego (pps/bps), RTT, cadência de Pings (\(WT\)) e razão de payload útil (\(R_{payload}\)).
 
 ```bash
 docker exec -it clab-seg-gateway \
@@ -170,37 +168,68 @@ docker exec -it clab-seg-gateway \
   -w /scripts/baseline_off.pcap
 ```
 
-Mantenha a captura ativa e encerre-a com `Ctrl+C` somente ao final da coleta de dados.
+**Métricas extraídas:**
+- Taxa de tráfego em pacotes por segundo (pps) e bits por segundo (bps).
+- Cadência de Pings (\(WT\)).
+- Razão de payload útil (\(R_{payload}\)).
+- Latência/RTT, quando houver informações suficientes para calculá-los.
 
-### Terminal 2 — Monitoramento dos logs do Mosquitto
+### Terminal 2 — Monitoramento de Recursos
 
-Acompanhe os logs do broker em tempo real para correlacionar eventos de conexão, desconexão e possíveis rejeições:
+**Métricas:** consumo de CPU e memória do broker Mosquitto e do gateway.
+
+```bash
+docker stats clab-seg-mqtt clab-seg-gateway
+```
+
+**Métricas extraídas:**
+- Consumo percentual de CPU.
+- Uso de memória (MB).
+
+### Terminal 3 — Logs de Conexões do Broker
 
 ```bash
 docker exec -it clab-seg-mqtt \
   tail -f /var/log/mosquitto/mosquitto.log
 ```
 
-> **Nota:** se o caminho do log ou o mapeamento de volumes for diferente, ajuste o comando. Por exemplo, o arquivo pode estar disponível em `/Mestrado/scripts/mosquitto.log`, dependendo da configuração do ambiente.
+**Métricas extraídas:**
+- Conexões MQTT.
+- Eventos de desconexão.
+- Rejeições de novos clientes, quando registradas.
 
-### Terminal 3 — Monitoramento do tráfego de aplicação MQTT
+### Terminal 4 — Leitura dos Mapas eBPF no Gateway
 
-Inicie a escuta das mensagens publicadas nos tópicos que começam com `iot/`:
+Execute somente quando o XDP estiver carregado e o mapa existir.
+
+```bash
+docker exec -it clab-seg-gateway \
+  bpftool map dump name map_metrics
+```
+
+**Métricas extraídas:**
+- Contadores de pacotes permitidos (`XDP_PASS`) e descartados (`XDP_DROP`), caso implementados no mapa.
+- Contagem de novas conexões TCP, caso contabilizada pelo programa.
+- Estado dos fluxos registrado nos mapas eBPF.
+
+### Terminal 5 — Registro de Mensagens Recebidas pelo Broker
 
 ```bash
 docker exec -it clab-seg-mqtt \
-  mosquitto_sub -h 10.0.2.10 -t "iot/#" -v
+  mosquitto_sub -h 10.0.2.10 -t "iot/#" -v |
+  ts '[%Y-%m-%d %H:%M:%S]' \
+  > /scripts/mensagens_recebidas.log
 ```
 
-Esse comando permite observar as mensagens recebidas pelo broker nos tópicos correspondentes, desde que o endereço IP, a conectividade e as permissões MQTT estejam configurados corretamente.
+**Métrica extraída:** quantidade e horário de recebimento das mensagens legítimas, para calcular a taxa de sucesso das publicações.
+
+> **Observação:** confirme se o container possui `ts` (moreutils), se o broker permite a conexão do assinante e se o endereço `10.0.2.10` corresponde ao endereço correto do broker na sua topologia.
 
 ---
 
-## Fase 2 — Cenário 1: Baseline sem proteção
+## Fase 2 — Cenário 1: Tráfego Legítimo e Linha de Base (*Baseline*)
 
-O objetivo deste cenário é estabelecer a referência experimental sem mecanismos de mitigação ativos, observar o comportamento dos sensores legítimos, validar a captura do tráfego e avaliar o impacto do ataque SlowTT sobre o broker.
-
-### 1. Desativar os mecanismos de proteção
+### 1. Desativar o mecanismo de defesa
 
 No terminal do host, execute:
 
@@ -208,134 +237,128 @@ No terminal do host, execute:
 ./load_xdp.sh off
 ```
 
-Esse comando deve desativar os mecanismos de mitigação eBPF/XDP previstos no experimento.
-
 ### 2. Iniciar os sensores legítimos
 
-Abra três terminais separados no host e execute um perfil de sensor em cada terminal.
+Abra três terminais separados. Cada script deve registrar localmente os horários de envio das mensagens.
 
-**Terminal 4 — Sensor de eventos**
+**Terminal 6 — Sensor de Evento**
 
 ```bash
 docker exec -it clab-seg-sensor-evento \
   python3 /scripts/sensor.py --perfil evento
 ```
 
-**Terminal 5 — Sensor de subscrição**
+**Terminal 7 — Sensor de Subscrição**
 
 ```bash
 docker exec -it clab-seg-sensor-sub \
   python3 /scripts/sensor.py --perfil sub
 ```
 
-**Terminal 6 — Sensor de jitter**
+**Terminal 8 — Sensor com Jitter**
 
 ```bash
 docker exec -it clab-seg-sensor-jitter \
   python3 /scripts/sensor.py --perfil jitter
 ```
 
-### Métricas analisadas nesta etapa
+### Métricas coletadas
 
-- **Taxa inicial de sucesso na entrega:** verificar se os sensores conseguem estabelecer conexão e transmitir mensagens ao broker.
-- **Funcionamento normal do broker:** confirmar, por meio do Terminal 3, que o tráfego legítimo está fluindo antes do início do ataque.
+- **Latência:** diferença entre o envio da mensagem e sua confirmação de recebimento, usando timestamps sincronizados.
+- **Taxa de publicações legítimas:** comparação entre as mensagens enviadas pelos sensores e as recebidas pelo assinante.
+- **Referência de falsos positivos (FP):** sem ataque e com a defesa desativada, verificar se todas as conexões legítimas são aceitas.
 
-A taxa inicial de entrega de 100% é uma referência esperada, não um resultado presumido. Registre o valor efetivamente observado.
+Nesse cenário, espera-se que \(FP = 0\) para o mecanismo de defesa, pois ele está desativado. Isso não comprova, isoladamente, a ausência de falhas de conexão no broker ou na rede.
 
 ---
 
-## Fase 3 — Disparo e medição do ataque
+## Fase 3 — Disparo do Ataque SlowTT
 
-### 3 Disparar o ataque SlowTT
+### 3. Iniciar o gerador de ataque
 
-Em um Terminal 7 no host, execute o script responsável por gerar o ataque:
+No Terminal 9, execute o gerador de ataque no container atacante.
 
 ```bash
 docker exec -it clab-seg-atacante \
-  python3 /scripts/slowtt_attack.py
+  python3 /scripts/slowtt_attack.py |
+  ts '[%Y-%m-%d %H:%M:%S]' \
+  > /scripts/ataque_execucao.log
 ```
 
-Registre o horário exato de início do ataque para correlacionar os eventos com a captura de pacotes (`PCAP`), os logs do Mosquitto e as medições realizadas no broker.
+**Métricas extraídas:**
+- Número de conexões criadas.
+- Taxa de pacotes por segundo.
+- Duração da execução.
 
-### 4. Medir a exaustão de conexões no broker
+### 4. Medir as conexões simultâneas no broker
 
-Com o ataque ativo, abra um Terminal 8 para consultar o impacto nos recursos do servidor.
-
-#### 4.1. Contar os soquetes TCP estabelecidos
+No Terminal 10:
 
 ```bash
-docker exec -it clab-seg-mqtt \
-  sh -c "ss -tna | grep ':1883' | grep -i ESTAB | wc -l"
+docker exec -it clab-seg-mqtt sh -c \
+  "ss -tna | grep ':1883' | grep -i ESTAB | wc -l"
 ```
 
-**Métrica analisada:** número de conexões TCP estabelecidas na porta 1883 (\(N_{conn}\)).
+**Métrica extraída:** número de conexões TCP estabelecidas (\(N_{conn}\)) na porta 1883.
 
-Registre a quantidade retornada e compare-a com o limite de conexões configurado no broker.
+> O comando depende da disponibilidade de `ss` no container e conta conexões TCP estabelecidas, não necessariamente sessões MQTT autenticadas ou ativas. Para acompanhar a evolução, registre o valor periodicamente.
 
-> **Importante:** o valor de 1024 só deve ser tratado como limite experimental se estiver efetivamente configurado e confirmado na instalação do Mosquitto. A contagem de conexões TCP estabelecidas não equivale necessariamente ao número de clientes MQTT ativos.
+### 5. Testar a disponibilidade durante o ataque
 
-#### 4.2. Testar a negação de serviço em um novo cliente
-
-Ainda durante o ataque, tente iniciar uma nova instância do sensor para simular uma tentativa de conexão de um novo dispositivo:
+Execute um teste de conexão legítima:
 
 ```bash
 docker exec -it clab-seg-sensor-evento \
-  python3 /scripts/sensor.py --perfil evento
+  python3 /scripts/sensor.py \
+  --perfil evento \
+  --teste-disponibilidade
 ```
 
-**Métrica analisada:** taxa de sucesso ou falha no estabelecimento de uma nova conexão.
-
-Registre o resultado e a mensagem de erro apresentada pelo cliente. Os possíveis sintomas incluem:
-
-- `Connection timed out`;
-- `Connection refused`;
-- falha de autenticação ou rejeição pelo broker;
-- conexão estabelecida, mas sem entrega de mensagens.
-
-A ocorrência isolada de um desses sintomas não comprova exaustão total dos recursos. Correlacione o resultado com o número de conexões alcançado e os logs registrados no Terminal 2.
+**Métrica extraída:** disponibilidade do broker, registrando horário, sucesso ou falha e mensagem de erro.
 
 ---
 
-## Fase 4 — Encerramento e extração das métricas de tráfego
+## Fase 4 — Encerramento e Pós-processamento
 
-### 5. Analisar os pacotes no Wireshark
+Após o período experimental, encerre o gerador de ataque e finalize a captura de pacotes com `Ctrl+C` no Terminal 1.
 
-Após concluir o período experimental de 2 a 5 minutos:
+### 1. Classificação dos resultados
 
-1. Encerre o ataque com `Ctrl+C` no Terminal 7.
-2. Encerre os sensores legítimos.
-3. Interrompa a captura de pacotes no Terminal 1 com `Ctrl+C`.
-4. Encerre os demais processos de monitoramento, conforme necessário.
-5. Abra o arquivo `baseline_off.pcap` no Wireshark.
+- **Falsos Positivos (FP):** conexões legítimas classificadas incorretamente como maliciosas ou bloqueadas pela defesa.
+- **Verdadeiros Negativos (TN):** conexões legítimas corretamente classificadas como legítimas.
+- **Verdadeiros Positivos (TP):** conexões maliciosas corretamente identificadas como ataque.
+- **Falsos Negativos (FN):** conexões maliciosas que não foram identificadas.
 
-### Métricas analisadas na camada de rede e aplicação
+Para calcular essas métricas, é necessário ter uma referência independente que identifique quais conexões são legítimas e quais pertencem ao ataque. Um pacote descartado não é automaticamente um verdadeiro positivo: é necessário confirmar que o tráfego descartado era malicioso.
 
-#### 5.1. Cadência de Pings / Wait Timeout (\(WT\))
+### 2. Cálculo das métricas
 
-Inspecione o intervalo de tempo entre as mensagens MQTT `PINGREQ` enviadas pelos clientes analisados.
+**Taxa de falsos positivos (FPR):**
 
-O conteúdo de controle MQTT do pacote `PINGREQ` é representado pelos bytes `C0 00`.
+\[
+\text{FPR} = \frac{FP}{FP + TN}
+\]
 
-Registre os intervalos observados e compare-os com os parâmetros de tempo definidos na metodologia experimental.
+**Taxa de detecção ou sensibilidade (TPR):**
 
-#### 5.2. Razão de Payload Útil (\(R_{payload}\))
+\[
+\text{TPR} = \frac{TP}{TP + FN}
+\]
 
-Calcule a proporção entre as mensagens `PUBLISH` legítimas e o tráfego de controle ou os pacotes sem payload útil para a aplicação.
+### 3. Análise do arquivo PCAP no Wireshark
 
-A interpretação de \(R_{payload}\) deve seguir rigorosamente a definição matemática adotada na metodologia. Pacotes TCP sem payload MQTT não constituem necessariamente tráfego malicioso.
+Arquivo: `baseline_off.pcap`.
 
-### Registro final do cenário
+- **PPS e BPS:** consultar *Statistics → Capture File Properties* e *Statistics → I/O Graphs*.
+- **Cadência de Pings (\(WT\)):** filtrar `mqtt.msgtype == 12` e, quando possível, limitar ao IP do atacante. Calcular os intervalos de tempo entre mensagens `PINGREQ`.
+- **Razão de payload útil (\(R_{payload}\)):** contar mensagens `PUBLISH` (`mqtt.msgtype == 3`) e dividir pelo total de pacotes TCP capturados, conforme a definição operacional adotada.
 
-| Item | Dado a registrar |
-|---|---|
-| Duração do experimento | Tempo efetivo de coleta |
-| Início do ataque | Horário registrado |
-| Taxa inicial de entrega | Percentual observado antes do ataque |
-| Conexões TCP estabelecidas | Valor de \(N_{conn}\) durante o ataque |
-| Resultado de nova conexão | Sucesso ou falha, com mensagem apresentada |
-| Cadência de `PINGREQ` | Intervalos observados |
-| Razão de payload útil | Valor calculado de \(R_{payload}\) |
-| Logs do Mosquitto | Eventos relevantes registrados |
-| Captura PCAP | Arquivo `baseline_off.pcap` |
+\[
+R_{payload} =
+\frac{N_{\text{PUBLISH}}}{N_{\text{pacotes TCP}}}
+\]
 
-**Resultado esperado:** estabelecer uma linha de base mensurável para comparar o comportamento do gateway e do broker sem proteção com os resultados dos cenários que utilizam `iptables` e eBPF/XDP.
+Essa última métrica representa uma razão de contagem de mensagens MQTT para pacotes TCP, não uma razão de bytes de payload. Se o objetivo for medir a proporção de bytes úteis, deve-se calcular separadamente o total de bytes de payload MQTT sobre o total de bytes de tráfego definido para a análise.
+
+**Nota:** a captura `baseline_off.pcap` é adequada para a linha de base. Para avaliar o comportamento durante o ataque e comparar a defesa, gere capturas separadas para cada cenário, identificando claramente se o XDP está desativado, configurado com limiares fixos ou usando máquina de estados.
+
