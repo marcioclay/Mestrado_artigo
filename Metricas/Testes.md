@@ -182,7 +182,7 @@ A sequência de testes é a mesma, o que altera é o cenário
 **Métricas:** taxa de tráfego (pps/bps), RTT, cadência de Pings (\(WT\)) e razão de payload útil (\(R_{payload}\)).
 
 ```
-docker exec -i clab-seg-gateway tcpdump -i eth2 -n "tcp port 1883" -w /Mestrado/scripts/stateless.pcap
+docker exec -i clab-seg-gateway tcpdump -i eth2 -n "tcp port 1883" -w stateless.pcap
 ```
  
 
