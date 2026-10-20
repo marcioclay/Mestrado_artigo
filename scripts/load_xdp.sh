@@ -20,6 +20,13 @@ if [ "$1" == "dfa" ]; then
     docker exec $GATEWAY ip link set dev $IFACE xdpgeneric pinned $PIN_PATH
     echo "--- [✓] MITIGAÇÃO eBPF + DFA ATIVADA ---"
 
+elif [ "$1" == "stateful" ]; then
+    limpar_defesa
+    echo "[*] Carregando eBPF Stateful Heurístico (Contadores L7 Sem DFA)..."
+    docker exec $GATEWAY bpftool prog load /scripts/xdp_stateful.o $PIN_PATH type xdp pinmaps /sys/fs/bpf/
+    docker exec $GATEWAY ip link set dev $IFACE xdpgeneric pinned $PIN_PATH
+    echo "--- [✓] MITIGAÇÃO eBPF STATEFUL HEURÍSTICA ATIVADA ---"
+
 elif [ "$1" == "stateless" ]; then
     limpar_defesa
     echo "[*] Carregando eBPF Stateless (Sem Autômato / Contadores)..."
@@ -38,5 +45,5 @@ elif [ "$1" == "off" ]; then
     echo "--- BASELINE (SEM PROTEÇÃO) ATIVADO ---"
 
 else
-    echo "Uso: ./load_xdp.sh [dfa|stateless|iptables|off]"
+    echo "Uso: ./load_xdp.sh [dfa|stateful|stateless|iptables|off]"
 fi
