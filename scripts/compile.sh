@@ -1,21 +1,11 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$SCRIPT_DIR"
+echo "[*] Compilando arquivos eBPF/XDP via Clang/LLVM..."
 
-echo "[*] Compilando programas eBPF (xdp_monitor_dfa.c e xdp_stateless.c)..."
+clang -O2 -g -target bpf -c /Mestrado/scripts/xdp_stateless.c -o /Mestrado/scripts/xdp_stateless.o
+clang -O2 -g -target bpf -c /Mestrado/scripts/xdp_stateful.c -o /Mestrado/scripts/xdp_stateful.o
+clang -O2 -g -target bpf -c /Mestrado/scripts/xdp_monitor_dfa.c -o /Mestrado/scripts/xdp_monitor_dfa.o
 
-sudo docker run --rm -v "$SCRIPT_DIR":/code -w /code ubuntu:22.04 /bin/bash -c "
-    apt-get update -qq && \
-    apt-get install -y -qq clang llvm libbpf-dev gcc-multilib && \
-    clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -c xdp_monitor_dfa.c -o xdp_monitor_dfa.o && \
-    clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -c xdp_stateless.c -o xdp_stateless.o
-"
-
-if [ -f xdp_monitor_dfa.o ] && [ -f xdp_stateless.o ]; then
-    echo "[✓] Sucesso! Bytecodes 'xdp_monitor_dfa.o' e 'xdp_stateless.o' gerados."
-else
-    echo "[-] Falha na compilação do eBPF."
-    exit 1
-fi
+echo "[✓] Compilação concluída com sucesso!"
+ls -la /Mestrado/scripts/*.o
