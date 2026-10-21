@@ -104,7 +104,7 @@ def main():
   client_id = f"sensor_{args.perfil}_01"
   user_data = {"id": client_id, "perfil": args.perfil}
 
-  # Compatibilidade transparente para Paho-MQTT v1.x e v2.x (Evita DeprecationWarning)
+  # Trata compatibilidade Paho-MQTT v1.x e v2.x sem gerar DeprecationWarning
   try:
     client = mqtt.Client(
         mqtt.CallbackAPIVersion.VERSION1,
