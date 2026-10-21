@@ -53,9 +53,17 @@ echo "[5/5] Configurando Atacante (10.0.1.20)..."
 docker exec clab-seg-atacante bash -c "
   export DEBIAN_FRONTEND=noninteractive && \
   apt-get update -qq && \
-  apt-get install -y -qq iproute2 python3 hping3 iperf3 iputils-ping && \
+  apt-get install -y -qq iproute2 iptables python3 hping3 iperf3 iputils-ping && \
   ip addr add 10.0.1.20/24 dev eth1 2>/dev/null || true && \
   ip route replace default via 10.0.1.1
+"
+
+echo "[6/6] Garantindo instalação do iptables no Gateway..."
+docker exec clab-seg-gateway bash -c "
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get update -qq && \
+  apt-get install -y -qq iptables tcpdump htop 2>/dev/null || true
+  
 "
 
 echo ""
