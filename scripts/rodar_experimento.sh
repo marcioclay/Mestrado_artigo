@@ -5,7 +5,6 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 
 # --- 1. Seleção Interativa do Método ---
 MODO=$1
@@ -32,6 +31,7 @@ if [ -z "$MODO" ]; then
     esac
 fi
 
+# Nome do arquivo PCAP específico para cada modo
 PCAP_FILE="${SCRIPT_DIR}/${MODO}.pcap"
 [ "$MODO" == "off" ] && PCAP_FILE="${SCRIPT_DIR}/baseline_off.pcap"
 
@@ -60,11 +60,11 @@ echo "[✓] Soquetes ativos no Mosquitto pós-limpeza: $SOQ_INICIAL"
 
 # --- 3. Aplicar Política de Segurança no Gateway ---
 echo "[2/8] Aplicando política de defesa no Gateway ($MODO)..."
-"${SCRIPT_DIR}/load_xdp_2.sh" "$MODO"
+"${SCRIPT_DIR}/load_xdp.sh" "$MODO"
 sleep 2
 
 # --- 4. Iniciar Captura de Pacotes (.pcap) e Escuta do Broker ---
-echo "[3/8] Iniciando captura de rede tcpdump e logs de escuta..."
+echo "[3/8] Iniciando captura de rede tcpdump ($PCAP_FILE)..."
 docker exec -d clab-seg-gateway bash -c "tcpdump -i eth2 -n 'tcp port 1883' -w $PCAP_FILE 2>/dev/null"
 docker exec -d clab-seg-mqtt bash -c "mosquitto_sub -h 10.0.2.10 -t 'iot/#' -v | ts '[%Y-%m-%d %H:%M:%S]' > /scripts/mensagens_recebidas.log"
 
@@ -92,7 +92,7 @@ sleep $((DURACAO / 2))
 kill $PID_TESTE 2>/dev/null || true
 
 # --- 8. Coleta Final de Métricas ---
-echo "[7/8] Finalizando coleta de métricas e estado do kernel..."
+echo "[7/8] Finalizando coleta de métricas..."
 SOQ_FINAL=$(docker exec clab-seg-mqtt bash -c "ss -tna | grep :1883 | grep -i ESTAB | wc -l")
 
 # Finalizar processos de captura e geradores
