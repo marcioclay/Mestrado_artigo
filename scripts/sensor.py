@@ -102,11 +102,21 @@ def main():
   args = parser.parse_args()
 
   client_id = f"sensor_{args.perfil}_01"
-  client = mqtt.Client(
-      client_id=client_id,
-      clean_session=True,
-      userdata={"id": client_id, "perfil": args.perfil},
-  )
+  user_data = {"id": client_id, "perfil": args.perfil}
+
+  # Compatibilidade transparente para Paho-MQTT v1.x e v2.x (Evita DeprecationWarning)
+  try:
+    client = mqtt.Client(
+        mqtt.CallbackAPIVersion.VERSION1,
+        client_id=client_id,
+        clean_session=True,
+        userdata=user_data,
+    )
+  except AttributeError:
+    client = mqtt.Client(
+        client_id=client_id, clean_session=True, userdata=user_data
+    )
+
   client.on_connect = on_connect
   client.on_message = on_message
 
