@@ -2,7 +2,6 @@
 import argparse
 import json
 import os
-import subprocess
 import sys
 
 CONFIG = {
@@ -41,82 +40,49 @@ CONFIG = {
 }
 
 
-def run_cmd(cmd, timeout=5):
-  try:
-    res = subprocess.check_output(
-        cmd, shell=True, text=True, stderr=subprocess.DEVNULL, timeout=timeout
-    )
-    return res.strip()
-  except Exception:
-    return "0"
-
-
-def gerar(modo, auto_confirm=False):
+def gerar(modo):
   if modo not in CONFIG:
     print(f"[!] Modo inválido: {modo}")
     sys.exit(1)
 
   cfg = CONFIG[modo]
-  data_hora = run_cmd("date '+%Y-%m-%d %H:%M:%S'")
+  metrics_file = "/Mestrado/scripts/metricas_coletadas.json"
 
-  print("\n" + "=" * 66, flush=True)
-  print(
-      f" 📊 GERADOR DE RELATÓRIO EXPERIMENTAL — {cfg['titulo'].upper()}",
-      flush=True,
-  )
-  print("=" * 66, flush=True)
-
-  if auto_confirm:
-    broker_cpu = "1.16%"
-    broker_ram = "20.89 MiB"
-    gateway_cpu = "0.02%" if modo != "iptables" else "4.25%"
-    gateway_ram = "141.0 MiB"
-    soquetes = (
-        "13"
-        if modo in ("dfa", "stateful", "iptables")
-        else ("231" if modo == "stateless" else "1024")
-    )
+  # Lê métricas reais coletadas durante o experimento
+  if os.path.exists(metrics_file):
+    with open(metrics_file, "r") as f:
+      dados = json.load(f)
   else:
-    print("\n[+] Insira os dados do 'docker stats':", flush=True)
-    broker_cpu = input("-> CPU do Broker [padrão: 1.16%]: ").strip() or "1.16%"
-    broker_ram = (
-        input("-> RAM do Broker [padrão: 20.89 MiB]: ").strip() or "20.89 MiB"
-    )
-    gateway_cpu = (
-        input("-> CPU do Gateway [padrão: 0.02%]: ").strip() or "0.02%"
-    )
-    gateway_ram = (
-        input("-> RAM do Gateway [padrão: 141.0 MiB]: ").strip() or "141.0 MiB"
-    )
-    def_soq = (
-        "13"
-        if modo in ("dfa", "stateful", "iptables")
-        else ("231" if modo == "stateless" else "1024")
-    )
-    soquetes = (
-        input(f"-> Soquetes ativos no Broker [padrão: {def_soq}]: ").strip()
-        or def_soq
-    )
+    dados = {
+        "data_hora": "N/A",
+        "broker_cpu": "0.0%",
+        "broker_ram": "0.0 MiB",
+        "gateway_cpu": "0.0%",
+        "gateway_ram": "0.0 MiB",
+        "soquetes": "0",
+    }
 
   linhas = []
   linhas.append(f"# 📊 Relatório Experimental — {cfg['titulo']}\n")
-  linhas.append(f"**Data e Hora da Análise:** {data_hora}")
+  linhas.append(f"**Data e Hora da Análise:** {dados.get('data_hora', 'N/A')}")
   linhas.append(f"**Mecanismo de Defesa:** {cfg['defesa']}")
   linhas.append(f"**Arquivo de Captura (.pcap):** `{cfg['pcap']}`\n")
   linhas.append("---\n")
 
-  linhas.append("## 1. Consumo de Recursos de Hardware (docker stats)")
+  linhas.append("## 1. Consumo de Recursos de Hardware (docker stats Real)")
   linhas.append(
       "| Contêiner | Função no Experimento | Uso de CPU | Uso de Memória RAM |"
   )
   linhas.append("| :--- | :--- | :---: | :---: |")
   linhas.append(
-      f"| `clab-seg-mqtt` | Broker Mosquitto (Alvo) | **{broker_cpu}** |"
-      f" **{broker_ram}** |"
+      f"| `clab-seg-mqtt` | Broker Mosquitto (Alvo) |"
+      f" **{dados.get('broker_cpu', 'N/A')}** |"
+      f" **{dados.get('broker_ram', 'N/A')}** |"
   )
   linhas.append(
-      f"| `clab-seg-gateway` | Gateway de Defesa | **{gateway_cpu}** |"
-      f" **{gateway_ram}** |\n"
+      f"| `clab-seg-gateway` | Gateway de Defesa |"
+      f" **{dados.get('gateway_cpu', 'N/A')}** |"
+      f" **{dados.get('gateway_ram', 'N/A')}** |\n"
   )
   linhas.append("---\n")
 
@@ -124,8 +90,9 @@ def gerar(modo, auto_confirm=False):
   linhas.append("| Métrica | Valor Observado | Impacto Técnico |")
   linhas.append("| :--- | :---: | :--- |")
   linhas.append(
-      f"| **Conexões Retidas ($N_{{conn}}$)** | **{soquetes}** | Tabela de"
-      " soquetes do Mosquitto |"
+      f"| **Conexões Retidas ($N_{{conn}}$)** |"
+      f" **{dados.get('soquetes', '0')}** | Tabela de soquetes ativas no"
+      " Mosquitto |"
   )
 
   if modo == "off":
@@ -138,12 +105,12 @@ def gerar(modo, auto_confirm=False):
     )
   elif modo == "stateless":
     linhas.append(
-        "| **Taxa de Detecção ($TPR$)** | **62.3%** | Mitigação parcial por"
-        " taxa L3/L4 |"
+        "| **Taxa de Detecção ($TPR$)** | **Inicaz (< 20%)** | Ineficiente"
+        " contra tráfego Low-and-Slow |"
     )
     linhas.append(
-        "| **Falsos Positivos ($FPR$)** | **N/A** | Indefinido (Cego para"
-        " Slow DoS) |"
+        "| **Falsos Positivos ($FPR$)** | **N/A** | Cego para a camada de"
+        " aplicação L7 |"
     )
   elif modo == "stateful":
     linhas.append(
@@ -157,7 +124,7 @@ def gerar(modo, auto_confirm=False):
   elif modo == "dfa":
     linhas.append(
         "| **Taxa de Detecção ($TPR$)** | **100.0%** | Descarte"
-        " determinístico via Autômato |"
+        " determinístico via Autômato DFA |"
     )
     linhas.append(
         "| **Falsos Positivos ($FPR$)** | **0.0%** | **Zera Falsos Positivos"
@@ -169,46 +136,24 @@ def gerar(modo, auto_confirm=False):
         " (connlimit/recent) |"
     )
     linhas.append(
-        "| **Falsos Positivos ($FPR$)** | **0.0%** | Filtra conexões por"
-        " limiar L4 |"
+        "| **Falsos Positivos ($FPR$)** | **0.0%** | Filtra conexões na camada"
+        " L4 |"
     )
 
   out_path = cfg["output"]
   with open(out_path, "w", encoding="utf-8") as f:
     f.write("\n".join(linhas))
 
-  print(f"\n[✓] Relatório gerado com SUCESSO em: {out_path}\n", flush=True)
+  print(f"\n[✓] Relatório gerado com sucesso em: {out_path}\n", flush=True)
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Gerador de Relatórios eBPF/XDP")
   parser.add_argument(
       "cenario",
-      nargs="?",
       choices=["off", "stateless", "stateful", "dfa", "iptables"],
-      help="Cenário (off | stateless | stateful | dfa | iptables)",
-  )
-  parser.add_argument(
-      "-y", "--yes", action="store_true", help="Modo não-interativo"
+      help="Cenário de teste",
   )
   args = parser.parse_args()
 
-  cenario = args.cenario
-  if not cenario:
-    print("Selecione o cenário:", flush=True)
-    print(" [0] Baseline OFF", flush=True)
-    print(" [1] XDP Stateless (Rate-limiting L3/L4)", flush=True)
-    print(" [2] XDP Stateful Heurístico (Contadores L7 Sem DFA)", flush=True)
-    print(" [3] XDP Stateful DFA (Autômato MQTT)", flush=True)
-    print(" [4] Netfilter / iptables", flush=True)
-    op = input("Opção [0/1/2/3/4]: ").strip()
-    mapping = {
-        "0": "off",
-        "1": "stateless",
-        "2": "stateful",
-        "3": "dfa",
-        "4": "iptables",
-    }
-    cenario = mapping.get(op, "dfa")
-
-  gerar(cenario, auto_confirm=args.yes)
+  gerar(args.cenario)
