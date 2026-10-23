@@ -3,6 +3,8 @@ import argparse
 import json
 import os
 import sys
+import csv
+import os
 
 CONFIG = {
     "off": {
@@ -38,6 +40,42 @@ CONFIG = {
         "defesa": "`Netfilter / iptables` (connlimit/recent/hashlimit)",
     },
 }
+
+
+def extrair_metricas_scheck(csv_path="/Mestrado/scripts/s_check_metrics.csv"):
+    if not os.path.exists(csv_path):
+        return "Nenhum dado do S_check registrado."
+    
+    total = 0
+    sucessos = 0
+    falhas = 0
+    latencias = []
+    
+    with open(csv_path, mode='r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            total += 1
+            if row["status"] == "OK":
+                sucessos += 1
+                latencias.append(float(row["latencia_ms"]))
+            else:
+                falhas += 1
+                
+    if total == 0:
+        return "Nenhuma checagem realizada."
+        
+    taxa_disp = (sucessos / total) * 100
+    lat_media = (sum(latencias) / len(latencias)) if latencias else 0.0
+    lat_max = max(latencias) if latencias else 0.0
+    
+    return f"""
+### 📈 Métricas de Disponibilidade e Latência ($S_{{check}}$)
+* **Total de Sondagens Realizadas:** {total}
+* **Taxa de Disponibilidade Real:** {taxa_disp:.2f}% ({sucessos} sucessos / {falhas} falhas)
+* **Latência Média de Acesso (Legítimos):** {lat_media:.2f} ms
+* **Latência Máxima Registrada:** {lat_max:.2f} ms
+"""
+
 
 
 def gerar(modo):
