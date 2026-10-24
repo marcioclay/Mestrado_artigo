@@ -6,6 +6,8 @@ import argparse
 import subprocess
 import csv
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ==============================================================================
 # FUNÇÕES DE SUPORTE E EXECUÇÃO DE COMANDOS
 # ==============================================================================
@@ -47,17 +49,12 @@ def obter_duracao_e_tamanho(pcap):
 
     return duracao, tamanho_bytes
 
-def processar_scheck(csv_path="/Mestrado/scripts/s_check_metrics.csv"):
+def processar_scheck(csv_path):
     """Lê as métricas de tempo real gravadas pelo script s_check.py."""
     if not os.path.exists(csv_path):
-        return """
-### 📈 Métricas de Disponibilidade do $S_{check}$
-* **Status:** Nenhum dado do $S_{check}$ registrado para este ensaio.
-""", 0.0
+        return """\n### 📈 Métricas de Disponibilidade do $S_{check}$\n* **Status:** Nenhum dado do $S_{check}$ registrado para este ensaio.\n""", 0.0
 
-    total = 0
-    sucessos = 0
-    falhas = 0
+    total, sucessos, falhas = 0, 0, 0
     latencias = []
 
     with open(csv_path, mode='r', encoding='utf-8') as f:
@@ -89,63 +86,50 @@ def processar_scheck(csv_path="/Mestrado/scripts/s_check_metrics.csv"):
 # ==============================================================================
 # PROCESSAMENTO DO RELATÓRIO POR CENÁRIO
 # ==============================================================================
-def gerar(cenario):
-    mapeamento = {
-        "off": {
-            "pcap": "/Mestrado/scripts/baseline_off.pcap",
-            "out": "/Mestrado/scripts/relatorio_xdp_off.md",
-            "titulo": "Cenário 0: Baseline sem Proteção (XDP OFF)",
-            "defesa": "NENHUMA (`OFF` - Roteamento Padrão Linux)"
-        },
-        "iptables": {
-            "pcap": "/Mestrado/scripts/iptables.pcap",
-            "out": "/Mestrado/scripts/relatorio_iptables.md",
-            "titulo": "Cenário 1: Mitigação L4 (iptables)",
-            "defesa": "Netfilter / iptables (Filtro por Limite de Conexões/Taxa)"
-        },
-        "heuristic": {
-            "pcap": "/Mestrado/scripts/heuristic.pcap",
-            "out": "/Mestrado/scripts/relatorio_xdp_heuristic.md",
-            "titulo": "Cenário 2: Mitigação eBPF/XDP Heurística (Sem DFA)",
-            "defesa": "eBPF/XDP Stateful Heurístico (Contadores Sem Validação de Estados)"
-        },
-        "dfa": {
-            "pcap": "/Mestrado/scripts/dfa.pcap",
-            "out": "/Mestrado/scripts/relatorio_xdp_dfa.md",
-            "titulo": "Cenário 3: Mitigação eBPF/XDP Proposta (Com Autômato DFA)",
-            "defesa": "eBPF/XDP Stateful com Validação Formal via Autômato Finito Determinístico"
-        }
+def gerar(defesa, cenario):
+    mapeamento_defesa = {
+        "off": "NENHUMA (`OFF` - Roteamento Padrão Linux)",
+        "iptables": "Netfilter / iptables (Filtro por Limite de Conexões/Taxa)",
+        "stateless": "eBPF/XDP Stateless (Sem Autômato / Contadores)",
+        "stateful": "eBPF/XDP Stateful Heurístico (Contadores Sem Validação de Estados)",
+        "dfa": "eBPF/XDP Stateful com Validação Formal via Autômato Finito Determinístico"
     }
 
-    config = mapeamento.get(cenario.lower())
-    if not config:
-        print(f"[X] Cenário '{cenario}' inválido! Opções válidas: off, iptables, heuristic, dfa")
+    if defesa.lower() not in mapeamento_defesa:
+        print(f"[X] Defesa '{defesa}' inválida! Opções: off, iptables, stateless, stateful, dfa")
         sys.exit(1)
 
-    pcap_file = config["pcap"]
-    output_report = config["out"]
-    titulo_cenario = config["titulo"]
-    mecanismo_defesa = config["defesa"]
+    # Nomes de arquivos dinâmicos amarrados ao script de rodar experimento
+    pcap_file = os.path.join(SCRIPT_DIR, f"captura_{defesa}_{cenario}.pcap")
+    output_report = os.path.join(SCRIPT_DIR, f"relatorio_{defesa}_{cenario}.md")
+    csv_scheck = os.path.join(SCRIPT_DIR, "s_check_metrics.csv")
+    log_msg = os.path.join(SCRIPT_DIR, "mensagens_recebidas.log")
+    
+    titulo_cenario = f"Cenário: {cenario.upper()} | Defesa: {defesa.upper()}"
+    mecanismo_defesa = mapeamento_defesa[defesa.lower()]
 
     print("==================================================================")
-    print(f" 📊 GERADOR DE RELATÓRIO EXPERIMENTAL — {cenario.upper()} ")
+    print(f" 📊 GERADOR DE RELATÓRIO EXPERIMENTAL — {defesa.upper()} / {cenario.upper()} ")
     print("==================================================================")
 
-    # Inputs para Recursos do Hardware (docker stats)
-    print("\n[+] Digite as métricas observadas no 'docker stats' durante o teste.")
-    print("    (Pressione ENTER para aceitar os valores padrão do print)\n")
+    # Prevenção de travamento no Run All (Lida com automação silenciosa)
+    broker_cpu_def, broker_ram_def = "0.23%", "26.33 MiB"
+    gateway_cpu_def, gateway_ram_def = "0.00%", "17.12 MiB"
+    soquetes_def = "1024" if defesa == "off" else "3"
 
-    broker_cpu_def = "0.23%"
-    broker_ram_def = "26.33 MiB"
-    gateway_cpu_def = "0.00%"
-    gateway_ram_def = "17.12 MiB"
-    soquetes_def = "1024" if cenario == "off" else "3"
-
-    broker_cpu = input(f"-> CPU do Broker Mosquitto [{broker_cpu_def}]: ").strip() or broker_cpu_def
-    broker_ram = input(f"-> RAM do Broker Mosquitto [{broker_ram_def}]: ").strip() or broker_ram_def
-    gateway_cpu = input(f"-> CPU do Gateway [{gateway_cpu_def}]: ").strip() or gateway_cpu_def
-    gateway_ram = input(f"-> RAM do Gateway [{gateway_ram_def}]: ").strip() or gateway_ram_def
-    soquetes_ocupados = input(f"-> Soquetes ocupados no Broker (ss -tna) [{soquetes_def}]: ").strip() or soquetes_def
+    if sys.stdin.isatty():
+        print("\n[+] Digite as métricas observadas no 'docker stats' durante o teste.")
+        print("    (Pressione ENTER para aceitar os valores padrão)\n")
+        broker_cpu = input(f"-> CPU do Broker Mosquitto [{broker_cpu_def}]: ").strip() or broker_cpu_def
+        broker_ram = input(f"-> RAM do Broker Mosquitto [{broker_ram_def}]: ").strip() or broker_ram_def
+        gateway_cpu = input(f"-> CPU do Gateway [{gateway_cpu_def}]: ").strip() or gateway_cpu_def
+        gateway_ram = input(f"-> RAM do Gateway [{gateway_ram_def}]: ").strip() or gateway_ram_def
+        soquetes_ocupados = input(f"-> Soquetes ocupados no Broker [{soquetes_def}]: ").strip() or soquetes_def
+    else:
+        # Automação/Run_all.sh detectada, utiliza os padrões para não travar
+        broker_cpu, broker_ram = broker_cpu_def, broker_ram_def
+        gateway_cpu, gateway_ram = gateway_cpu_def, gateway_ram_def
+        soquetes_ocupados = soquetes_def
 
     if not broker_cpu.endswith("%"): broker_cpu += "%"
     if not gateway_cpu.endswith("%"): gateway_cpu += "%"
@@ -164,7 +148,7 @@ def gerar(cenario):
     pingreq_pkts = int(run_cmd(f"tshark -r {pcap_file} -Y 'mqtt.msgtype == 12' | wc -l") or 0)
     tcp_zero_win = int(run_cmd(f"tshark -r {pcap_file} -Y 'tcp.window_size == 0' | wc -l") or 0)
 
-    # 2. Cálculos Matemáticos Automáticos de Vazão e Bandwidth
+    # 2. Cálculos Matemáticos Automáticos de Vazão
     duracao_s, tamanho_bytes = obter_duracao_e_tamanho(pcap_file) if os.path.exists(pcap_file) else (1.0, 1)
     vazao_pps = total_pacotes / duracao_s if duracao_s > 0 else 0.0
     vazao_kbps = ((tamanho_bytes * 8) / (duracao_s * 1000)) if duracao_s > 0 else 0.0
@@ -172,14 +156,12 @@ def gerar(cenario):
     total_mqtt = connect_pkts + publish_pkts + pingreq_pkts
     r_payload = ((publish_pkts / total_mqtt) * 100.0) if total_mqtt > 0 else 0.0
 
-    # 3. Métricas do Log de Mensagens Recebidas (Subscriber)
-    log_msg = "/Mestrado/scripts/mensagens_recebidas.log"
+    # 3. Métricas do Log de Mensagens Recebidas
     msgs_entregues = int(run_cmd(f"grep -c 'iot/' {log_msg}") or 0) if os.path.exists(log_msg) else 0
     taxa_perda_telemetria = (((publish_pkts - msgs_entregues) / publish_pkts) * 100.0) if publish_pkts > 0 else 0.0
 
     # 4. Leitura do S_check
-    texto_scheck, taxa_disp_scheck = processar_scheck()
-
+    texto_scheck, taxa_disp_scheck = processar_scheck(csv_scheck)
     cap_info = run_cmd(f"capinfos -d -M -u {pcap_file} 2>/dev/null") if os.path.exists(pcap_file) else "Sem PCAP"
     data_hora = run_cmd("date '+%Y-%m-%d %H:%M:%S'")
 
@@ -208,40 +190,4 @@ def gerar(cenario):
     doc.append(f"* **Largura de Banda Média Consumida:** **{vazao_kbps:.2f} kbps**")
     doc.append(f'* **Pacotes com "TCP Zero Window" (Slow Read):** {tcp_zero_win}')
     doc.append("* **Resumo Técnico da Captura (`capinfos`):**")
-    doc.append("```text")
-    doc.append(str(cap_info))
-    doc.append("```\n")
-    doc.append("---\n")
-
-    doc.append("## 3. Análise da Camada de Aplicação (L7 - MQTT)")
-    doc.append("Detalhamento das mensagens do protocolo MQTT interceptadas:\n")
-    doc.append(f"* **Pacotes `CONNECT` (Solicitações de Sessão):** {connect_pkts:,}")
-    doc.append(f"* **Pacotes `PUBLISH` (Telemetria Legítima):** {publish_pkts:,}")
-    doc.append(f"* **Pacotes `PINGREQ` (Manutenção Keep-Alive / SlowTT):** {pingreq_pkts:,}")
-    doc.append(f"* **Razão de Payload Útil ($R_{{payload}}$):** **{r_payload:.2f}%**")
-    doc.append(f"* **Mensagens Legítimas Entregues ao Subscriber:** {msgs_entregues:,} de {publish_pkts:,} (Perda de **{taxa_perda_telemetria:.1f}%**)\n")
-    doc.append("---\n")
-
-    doc.append("## 4. Avaliação de Impacto e Disponibilidade Continuada")
-    doc.append(texto_scheck)
-    doc.append("| Métrica de Desempenho | Valor Observado | Impacto Técnico |")
-    doc.append("| :--- | :--- | :--- |")
-    doc.append(f"| **Conexões Simultâneas no Broker ($N_{{conn}}$)** | **{soquetes_ocupados} soquetes** | Estado da tabela de soquetes no Mosquitto. |")
-    doc.append(f"| **Disponibilidade para Novos Clientes ($S_{{check}}$)** | **{taxa_disp_scheck:.1f}%** | Capacidade de processar novas conexões legítimas. |")
-    doc.append(f"| **Taxa de Perda de Telemetria** | **{taxa_perda_telemetria:.1f}%** | Percentual de mensagens de sensores não entregues. |\n")
-    doc.append("---\n")
-
-    doc.append(f"*Relatório gerado automaticamente para o {titulo_cenario}.*")
-
-    with open(output_report, "w", encoding="utf-8") as f:
-        f.write("\n".join(doc))
-
-    print(f"[✓] Relatório gerado com SUCESSO em: {output_report}\n")
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Gerador Unificado de Relatórios por Cenário")
-    parser.add_argument("--cenario", choices=["off", "iptables", "heuristic", "dfa"], default="off",
-                        help="Cenário do experimento (off, iptables, heuristic, dfa)")
-    args = parser.parse_args()
-
-    gerar(args.cenario)
+    doc.append("```text\n"
