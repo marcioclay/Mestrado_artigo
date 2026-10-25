@@ -46,6 +46,7 @@ sleep 1
 # Limpa logs do ensaio anterior
 rm -f "${SCRIPT_DIR}/s_check_metrics.csv"
 rm -f "${SCRIPT_DIR}/mensagens_recebidas.log"
+rm -f "${SCRIPT_DIR}/soquetes_pico.txt"
 rm -f "${HOST_PCAP}"
 
 # Reinicia Mosquitto limpo
@@ -60,7 +61,6 @@ echo "[2/8] Aplicando defesa no Gateway ($DEFESA)..."
 echo "[3/8] Iniciando captura tcpdump na interface eth1 ($CONTAINER_PCAP)..."
 docker exec -d clab-seg-gateway bash -c "tcpdump -i eth1 -n 'tcp port 1883' -w ${CONTAINER_PCAP} >/dev/null 2>&1"
 docker exec -d clab-seg-mqtt bash -c "mosquitto_sub -h 10.0.2.10 -t 'iot/#' -v > /scripts/mensagens_recebidas.log 2>&1"
-
 
 # Iniciar S_check a partir do Sensor de Evento (atravessa a defesa)
 echo "      Iniciando monitoramento S_check em segundo plano..."
@@ -86,9 +86,16 @@ else
     echo "[5/8] Pulo: Ataque desativado."
 fi
 
-# [6/8] Execução do Teste
+# [6/8] Execução do Teste (Dividida para capturar o pico)
+MEIO=$((DURACAO / 2))
+RESTO=$((DURACAO - MEIO))
 echo "[6/8] Aguardando duração do experimento ($DURACAO segundos)..."
-sleep $DURACAO
+sleep $MEIO
+
+echo "      [+] Capturando o pico de conexões no Broker a meio do tempo..."
+docker exec clab-seg-mqtt bash -c "ss -tna | grep :1883 | grep -i ESTAB | wc -l" > "${SCRIPT_DIR}/soquetes_pico.txt"
+
+sleep $RESTO
 
 # [7/8] Encerrar Processos
 echo "[7/8] Encerrando geradores de tráfego e salvando capturas..."
