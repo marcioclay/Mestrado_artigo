@@ -1,76 +1,96 @@
 #!/usr/bin/env python3
 import time
-import sys
 import csv
-import os
+import argparse
 import paho.mqtt.client as mqtt
 
 BROKER_HOST = "10.0.2.10"
 BROKER_PORT = 1883
-TOPIC = "iot/monitor/s_check"
-CLIENT_ID_PREFIX = "S_check"
-TIMEOUT = 3.0    # Tempo máximo de espera (segundos)
-INTERVALO = 2.0  # Frequência de checagem (segundos)
-LOG_FILE = "/scripts/s_check_metrics.csv"  # Salvo no diretório compartilhado /scripts/
+CSV_FILE = "/scripts/s_check_metrics.csv"
+CLIENT_ID = "monitor_scheck"
+TOPIC = "iot/monitoramento/scheck"
+
+# Variáveis globais para controle
+conectado = False
+latencia_inicio = 0
+latencia_ms = 0
+falhas_consecutivas = 0
+
+def on_connect(client, userdata, flags, rc):
+    global conectado, latencia_ms, latencia_inicio
+    if rc == 0:
+        conectado = True
+        latencia_ms = (time.time() - latencia_inicio) * 1000
+    else:
+        conectado = False
+
+def on_disconnect(client, userdata, rc):
+    global conectado
+    conectado = False
 
 def init_csv():
-    # Inicializa/reinicia o arquivo CSV no início da execução
-    with open(LOG_FILE, mode='w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(["timestamp", "ciclo", "status", "latencia_ms", "erro"])
+    with open(CSV_FILE, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["ciclo", "timestamp", "status", "latencia_ms"])
 
-def run_s_check():
+def log_csv(ciclo, status, latencia):
+    with open(CSV_FILE, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([ciclo, time.strftime('%Y-%m-%d %H:%M:%S'), status, f"{latencia:.2f}"])
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--duracao", type=int, default=60, help="Tempo total de monitoramento em segundos")
+    args = parser.parse_args()
+
+    print(f"[*] Iniciando S_check. Monitorando o broker {BROKER_HOST}:{BROKER_PORT} por {args.duracao}s...")
     init_csv()
-    print(f"[*] Iniciando S_check - Monitoramento Contínuo")
-    print(f"[*] Métrica registradas em: {LOG_FILE}\n")
-    
+
+    tempo_inicio = time.time()
     ciclo = 1
-    while True:
-        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        client_id = f"{CLIENT_ID_PREFIX}_{ciclo}"
-        client = mqtt.Client(client_id=client_id, clean_session=True)
-        
-        inicio = time.time()
-        status = "FALHA"
-        latencia = 0.0
-        erro_msg = ""
-        
+
+    while (time.time() - tempo_inicio) < args.duracao:
+        global conectado, latencia_inicio, latencia_ms
+        conectado = False
+        latencia_ms = 0
+        latencia_inicio = time.time()
+
         try:
+            client = mqtt.Client(client_id=CLIENT_ID, clean_session=True)
+            client.on_connect = on_connect
+            client.on_disconnect = on_disconnect
+            
+            # Timeout curto para detectar indisponibilidade rápido
             client.connect(BROKER_HOST, BROKER_PORT, keepalive=5)
             client.loop_start()
             
-            res = client.publish(TOPIC, f"PING_{ciclo}", qos=1)
-            res.wait_for_publish(timeout=TIMEOUT)
+            # Aguarda até 2 segundos pela conexão
+            espera = 0
+            while not conectado and espera < 2.0:
+                time.sleep(0.1)
+                espera += 0.1
             
-            if res.is_published():
-                latencia = (time.time() - inicio) * 1000
-                status = "OK"
-                print(f"[✓] {timestamp} | Ciclo {ciclo:04d} | DISPONÍVEL | Latência: {latencia:.2f} ms")
-            else:
-                erro_msg = "TIMEOUT_QOS1"
-                print(f"[!] {timestamp} | Ciclo {ciclo:04d} | LENTIDÃO: Timeout de {TIMEOUT}s")
-                
             client.loop_stop()
             client.disconnect()
-            
+
         except Exception as e:
+            conectado = False
+
+        if conectado:
+            status = "OK"
+            falhas_consecutivas = 0
+            print(f"[✓] Ciclo {ciclo:04d} | Broker DISPONÍVEL | Latência: {latencia_ms:.2f} ms")
+        else:
             status = "FALHA"
-            erro_msg = str(e).replace(',', ';')
-            print(f"[X] {timestamp} | Ciclo {ciclo:04d} | INDISPONÍVEL: {e}")
-            
-        # Registra o resultado do ciclo no arquivo CSV
-        with open(LOG_FILE, mode='a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([timestamp, ciclo, status, f"{latencia:.2f}", erro_msg])
-            
+            falhas_consecutivas += 1
+            latencia_ms = 0
+            print(f"[X] Ciclo {ciclo:04d} | Broker INDISPONÍVEL | Falha de conexão.")
+
+        log_csv(ciclo, status, latencia_ms)
         ciclo += 1
-        tempo_gasto = time.time() - inicio
-        if tempo_gasto < INTERVALO:
-            time.sleep(INTERVALO - tempo_gasto)
+        time.sleep(1) # Testa a cada 1 segundo
+
+    print("[*] S_check finalizado.")
 
 if __name__ == "__main__":
-    try:
-        run_s_check()
-    except KeyboardInterrupt:
-        print("\n[*] Script S_check finalizado.")
-        sys.exit(0)
+    main()
