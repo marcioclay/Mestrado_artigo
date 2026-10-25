@@ -22,10 +22,6 @@ def on_connect(client, userdata, flags, rc):
     else:
         conectado = False
 
-def on_disconnect(client, userdata, rc):
-    global conectado
-    conectado = False
-
 def init_csv():
     os.makedirs(os.path.dirname(CSV_FILE), exist_ok=True)
     with open(CSV_FILE, mode='w', newline='', encoding='utf-8') as file:
@@ -53,28 +49,34 @@ def main():
         latencia_inicio = time.time()
 
         try:
-            client = mqtt.Client(client_id=f"{CLIENT_ID}_{ciclo}", clean_session=True)
+            # Garante compatibilidade entre Paho-MQTT v1 e v2
+            try:
+                client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id=f"{CLIENT_ID}_{ciclo}", clean_session=True)
+            except AttributeError:
+                client = mqtt.Client(client_id=f"{CLIENT_ID}_{ciclo}", clean_session=True)
+
             client.on_connect = on_connect
-            client.on_disconnect = on_disconnect
             
-            client.connect(BROKER_HOST, BROKER_PORT, keepalive=5)
+            client.connect(BROKER_HOST, BROKER_PORT, keepalive=10)
             client.loop_start()
             
             espera = 0
-            while not conectado and espera < 2.0:
+            while not conectado and espera < 3.0:
                 time.sleep(0.1)
                 espera += 0.1
             
             client.loop_stop()
             client.disconnect()
-        except Exception:
+        except Exception as e:
             conectado = False
 
         if conectado:
             status = "OK"
+            print(f"[✓] Ciclo {ciclo:04d} | Broker DISPONÍVEL | Latência: {latencia_ms:.2f} ms")
         else:
             status = "FALHA"
             latencia_ms = 0.0
+            print(f"[X] Ciclo {ciclo:04d} | Broker INDISPONÍVEL")
 
         log_csv(ciclo, status, latencia_ms)
         ciclo += 1
