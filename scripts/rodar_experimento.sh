@@ -57,7 +57,6 @@ sleep 2
 
 # [3/8] Captura tcpdump e Log MQTT
 echo "[3/8] Iniciando captura tcpdump em TODAS as interfaces ($PCAP_FILE)..."
-# Usando a interface 'any' para garantir que capture todo o tráfego da porta 1883
 docker exec -d clab-seg-gateway bash -c "tcpdump -i any -n 'tcp port 1883' -w $PCAP_FILE >/dev/null 2>&1"
 # Coleta de mensagens recebidas (Subscriber legítimo extra para validação)
 docker exec -d clab-seg-mqtt bash -c "mosquitto_sub -h 10.0.2.10 -t 'iot/#' > /scripts/mensagens_recebidas.log"
