@@ -14,12 +14,13 @@ fi
 echo "[1/5] Subindo a topologia no Containerlab..."
 sudo clab deploy -t "$TOPOLOGIA_FILE" --reconfigure
 
-echo "[2/5] Configurando rede no Gateway..."
+echo "[2/5] Configurando rede e dependências no Gateway..."
 docker exec clab-seg-gateway bash -c "
   sysctl -w net.ipv4.ip_forward=1 && \
   ip addr add 10.0.1.1/24 dev eth2 2>/dev/null || true && \
   ip addr add 10.0.2.1/24 dev eth1 2>/dev/null || true && \
-  apt-get update -qq && apt-get install -y -qq iptables tcpdump 2>/dev/null || true
+  apt-get update -qq && \
+  apt-get install -y -qq iptables tcpdump python3 python3-pip python3-paho-mqtt 2>/dev/null || true
 "
 
 echo "[3/5] Configurando Broker MQTT..."
