@@ -13,10 +13,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # LEITOR NATIVO DE ARQUIVOS PCAP (SEM DEPENDÊNCIAS EXTERNAS)
 # ==============================================================================
 def parse_pcap_native(pcap_path):
-    """
-    Lê nativamente o arquivo .pcap binário em Python.
-    Retorna: (total_pkts, connect_pkts, publish_pkts, pingreq_pkts, zero_win_pkts, duracao_s, tamanho_bytes)
-    """
     if not os.path.exists(pcap_path):
         return 0, 0, 0, 0, 0, 1.0, 0
 
@@ -44,7 +40,7 @@ def parse_pcap_native(pcap_path):
             elif magic in (b'\xa1\xb2\xc3\xd4', b'\xa1\xb2\x3c\x4d'):
                 endian = '>'
             else:
-                return None  # Retorna None para acionar o fallback do tcpdump se não for PCAP padrão
+                return None
 
             link_type = struct.unpack(endian + 'I', global_header[20:24])[0]
 
@@ -132,11 +128,17 @@ def get_docker_stats(container_name):
     return "N/A", "N/A"
 
 def get_mqtt_sockets():
+    """Lê a quantidade de soquetes registada a meio do teste antes do pkill."""
     try:
-        out = run_cmd("docker exec clab-seg-mqtt bash -c 'ss -tna | grep :1883 | grep -i ESTAB | wc -l'")
-        return out.strip() if out.strip() else "0"
+        txt_path = os.path.join(SCRIPT_DIR, "soquetes_pico.txt")
+        if os.path.exists(txt_path):
+            with open(txt_path, 'r') as f:
+                val = f.read().strip()
+                if val:
+                    return val
     except Exception:
-        return "0"
+        pass
+    return "0"
 
 def obter_duracao_e_tamanho(pcap):
     duracao = 0.0
@@ -222,7 +224,6 @@ def gerar(defesa, cenario):
     gateway_cpu, gateway_ram = get_docker_stats("clab-seg-gateway")
     soquetes_ocupados = get_mqtt_sockets()
 
-    # 1. Extração do PCAP (Nativa com fallback)
     res_native = parse_pcap_native(pcap_file) if os.path.exists(pcap_file) else None
 
     if res_native is not None:
@@ -248,7 +249,6 @@ def gerar(defesa, cenario):
     cap_info = run_cmd(f"capinfos -d -M -u {pcap_file} 2>/dev/null") if os.path.exists(pcap_file) else "Sem PCAP"
     data_hora = run_cmd("date '+%Y-%m-%d %H:%M:%S'")
 
-    # Documento Markdown
     doc = []
     doc.append(f"# 📊 Relatório Experimental — {titulo_cenario}\n")
     doc.append(f"**Data e Hora da Análise:** {data_hora}")
