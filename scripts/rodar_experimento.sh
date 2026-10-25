@@ -64,7 +64,7 @@ docker exec -d clab-seg-mqtt bash -c "mosquitto_sub -h 10.0.2.10 -t 'iot/#' > /s
 
 # Iniciar Monitor de Disponibilidade S_check dentro do Gateway
 echo "      Iniciando monitoramento S_check em segundo plano..."
-docker exec -d clab-seg-gateway python3 /scripts/s_check.py --duracao $DURACAO
+docker exec -d clab-seg-sensor-evento python3 /scripts/s_check.py --duracao $DURACAO
 
 # [4/8] Sensores Legítimos
 if [[ "$CENARIO" == "legitimo" || "$CENARIO" == "todos" ]]; then
