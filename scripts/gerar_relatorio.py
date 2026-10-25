@@ -2,17 +2,117 @@
 import os
 import re
 import sys
+import csv
+import struct
 import argparse
 import subprocess
-import csv
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ==============================================================================
-# FUNÇÕES DE SUPORTE E EXECUÇÃO DE COMANDOS
+# LEITOR NATIVO DE ARQUIVOS PCAP (SEM DEPENDÊNCIAS EXTERNAS)
+# ==============================================================================
+def parse_pcap_native(pcap_path):
+    """
+    Lê nativamente o arquivo .pcap binário em Python.
+    Retorna: (total_pkts, connect_pkts, publish_pkts, pingreq_pkts, zero_win_pkts, duracao_s, tamanho_bytes)
+    """
+    if not os.path.exists(pcap_path):
+        return 0, 0, 0, 0, 0, 1.0, 0
+
+    tamanho_bytes = os.path.getsize(pcap_path)
+    if tamanho_bytes < 24:
+        return 0, 0, 0, 0, 0, 1.0, tamanho_bytes
+
+    total_pkts = 0
+    connect_pkts = 0
+    publish_pkts = 0
+    pingreq_pkts = 0
+    zero_win_pkts = 0
+    first_ts = None
+    last_ts = None
+
+    try:
+        with open(pcap_path, 'rb') as f:
+            global_header = f.read(24)
+            if len(global_header) < 24:
+                return 0, 0, 0, 0, 0, 1.0, tamanho_bytes
+
+            magic = global_header[:4]
+            if magic in (b'\xd4\xc3\xb2\xa1', b'\x4d\x3c\xb2\xa1'):
+                endian = '<'
+            elif magic in (b'\xa1\xb2\xc3\xd4', b'\xa1\xb2\x3c\x4d'):
+                endian = '>'
+            else:
+                return None  # Retorna None para acionar o fallback do tcpdump se não for PCAP padrão
+
+            link_type = struct.unpack(endian + 'I', global_header[20:24])[0]
+
+            while True:
+                pkt_hdr = f.read(16)
+                if len(pkt_hdr) < 16:
+                    break
+                ts_sec, ts_usec, incl_len, orig_len = struct.unpack(endian + 'IIII', pkt_hdr)
+                pkt_data = f.read(incl_len)
+                if len(pkt_data) < incl_len:
+                    break
+
+                total_pkts += 1
+                ts = ts_sec + (ts_usec / 1e6)
+                if first_ts is None:
+                    first_ts = ts
+                last_ts = ts
+
+                eth_offset = 14
+                if link_type in (0, 108):
+                    eth_offset = 4
+                elif link_type in (113, 276):
+                    eth_offset = 16 if link_type == 113 else 20
+
+                ip_data = None
+                for offset in (eth_offset, 14, 16, 20, 4, 0):
+                    if len(pkt_data) >= offset + 20:
+                        if (pkt_data[offset] & 0xf0) == 0x40:
+                            ip_data = pkt_data[offset:]
+                            break
+
+                if ip_data is None or len(ip_data) < 20:
+                    continue
+
+                ip_header_len = (ip_data[0] & 0x0f) * 4
+                protocol = ip_data[9]
+
+                if protocol == 6:  # TCP
+                    tcp_data = ip_data[ip_header_len:]
+                    if len(tcp_data) < 20:
+                        continue
+
+                    window_size = struct.unpack('>H', tcp_data[14:16])[0]
+                    if window_size == 0:
+                        zero_win_pkts += 1
+
+                    tcp_header_len = ((tcp_data[12] >> 4) & 0x0f) * 4
+                    payload = tcp_data[tcp_header_len:]
+
+                    if len(payload) > 0:
+                        msg_type = (payload[0] & 0xf0) >> 4
+                        if msg_type == 1:
+                            connect_pkts += 1
+                        elif msg_type == 3:
+                            publish_pkts += 1
+                        elif msg_type == 12:
+                            pingreq_pkts += 1
+
+        duracao = (last_ts - first_ts) if (first_ts is not None and last_ts is not None and last_ts > first_ts) else 1.0
+        return total_pkts, connect_pkts, publish_pkts, pingreq_pkts, zero_win_pkts, duracao, tamanho_bytes
+
+    except Exception:
+        return None
+
+# ==============================================================================
+# FUNÇÕES AUXILIARES
 # ==============================================================================
 def run_cmd(cmd):
-    """Executa um comando no shell e retorna a saída formatada."""
     try:
         res = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.DEVNULL)
         return res.strip()
@@ -20,7 +120,6 @@ def run_cmd(cmd):
         return "0"
 
 def get_docker_stats(container_name):
-    """Extrai CPU e RAM reais do contêiner sem travar o script."""
     try:
         cmd = f"docker stats --no-stream --format '{{{{.CPUPerc}}}}|{{{{.MemUsage}}}}' {container_name}"
         out = run_cmd(cmd)
@@ -33,15 +132,13 @@ def get_docker_stats(container_name):
     return "N/A", "N/A"
 
 def get_mqtt_sockets():
-    """Conta soquetes TCP estabelecidos no broker."""
     try:
-        out = run_cmd("docker exec clab-seg-mqtt ss -tna | grep -c ESTAB")
+        out = run_cmd("docker exec clab-seg-mqtt bash -c 'ss -tna | grep :1883 | grep -i ESTAB | wc -l'")
         return out.strip() if out.strip() else "0"
     except Exception:
         return "0"
 
 def obter_duracao_e_tamanho(pcap):
-    """Extrai a duração (s) e tamanho (bytes) do arquivo PCAP via capinfos ou tshark."""
     duracao = 0.0
     tamanho_bytes = 0
 
@@ -49,29 +146,22 @@ def obter_duracao_e_tamanho(pcap):
     m_dur = re.search(r"Capture duration:\s+([\d\.]+)", out_cap)
     m_size = re.search(r"Data size:\s+(\d+)", out_cap)
 
-    if m_dur:
-        duracao = float(m_dur.group(1))
-    if m_size:
-        tamanho_bytes = int(m_size.group(1))
+    if m_dur: duracao = float(m_dur.group(1))
+    if m_size: tamanho_bytes = int(m_size.group(1))
 
     if duracao == 0.0:
-        t_start = run_cmd(f"tshark -r {pcap} -T fields -e frame.time_epoch | head -n 1")
-        t_end = run_cmd(f"tshark -r {pcap} -T fields -e frame.time_epoch | tail -n 1")
-        try:
-            duracao = float(t_end) - float(t_start)
-        except Exception:
-            duracao = 1.0
+        t_start = run_cmd(f"tcpdump -tt -nn -r {pcap} 2>/dev/null | head -n 1 | cut -d' ' -f1")
+        t_end = run_cmd(f"tcpdump -tt -nn -r {pcap} 2>/dev/null | tail -n 1 | cut -d' ' -f1")
+        try: duracao = float(t_end) - float(t_start)
+        except Exception: duracao = 1.0
 
     if tamanho_bytes == 0:
-        try:
-            tamanho_bytes = os.path.getsize(pcap)
-        except Exception:
-            tamanho_bytes = 1
+        try: tamanho_bytes = os.path.getsize(pcap)
+        except Exception: tamanho_bytes = 1
 
     return duracao, tamanho_bytes
 
 def processar_scheck(csv_path):
-    """Lê as métricas de tempo real gravadas pelo script s_check.py."""
     if not os.path.exists(csv_path):
         return """\n### 📈 Métricas de Disponibilidade do $S_{check}$\n* **Status:** Nenhum dado do $S_{check}$ registrado para este ensaio.\n""", 0.0
 
@@ -84,10 +174,8 @@ def processar_scheck(csv_path):
             total += 1
             if row.get("status") == "OK":
                 sucessos += 1
-                try:
-                    latencias.append(float(row["latencia_ms"]))
-                except (ValueError, KeyError):
-                    pass
+                try: latencias.append(float(row["latencia_ms"]))
+                except (ValueError, KeyError): pass
             else:
                 falhas += 1
 
@@ -105,7 +193,7 @@ def processar_scheck(csv_path):
     return texto_md, taxa_disp
 
 # ==============================================================================
-# PROCESSAMENTO DO RELATÓRIO
+# CONSTRUÇÃO DO RELATÓRIO
 # ==============================================================================
 def gerar(defesa, cenario):
     mapeamento_defesa = {
@@ -128,29 +216,31 @@ def gerar(defesa, cenario):
     titulo_cenario = f"Cenário: {cenario.upper()} | Defesa: {defesa.upper()}"
     mecanismo_defesa = mapeamento_defesa[defesa.lower()]
 
-    print(f"\n[*] Gerando Relatório: {defesa.upper()} / {cenario.upper()}")
+    print(f"[*] Processando métricas: {defesa.upper()} / {cenario.upper()}")
 
-    # Coleta autônoma de Hardware do Docker
     broker_cpu, broker_ram = get_docker_stats("clab-seg-mqtt")
     gateway_cpu, gateway_ram = get_docker_stats("clab-seg-gateway")
     soquetes_ocupados = get_mqtt_sockets()
 
-    # 1. Extração L3/L4 via tshark
-    total_pacotes = int(run_cmd(f"tshark -r {pcap_file} | wc -l") or 0)
-    connect_pkts = int(run_cmd(f"tshark -r {pcap_file} -Y 'mqtt.msgtype == 1' | wc -l") or 0)
-    publish_pkts = int(run_cmd(f"tshark -r {pcap_file} -Y 'mqtt.msgtype == 3' | wc -l") or 0)
-    pingreq_pkts = int(run_cmd(f"tshark -r {pcap_file} -Y 'mqtt.msgtype == 12' | wc -l") or 0)
-    tcp_zero_win = int(run_cmd(f"tshark -r {pcap_file} -Y 'tcp.window_size == 0' | wc -l") or 0)
+    # 1. Extração do PCAP (Nativa com fallback)
+    res_native = parse_pcap_native(pcap_file) if os.path.exists(pcap_file) else None
 
-    # 2. Cálculos de Vazão
-    duracao_s, tamanho_bytes = obter_duracao_e_tamanho(pcap_file) if os.path.exists(pcap_file) else (1.0, 1)
+    if res_native is not None:
+        total_pacotes, connect_pkts, publish_pkts, pingreq_pkts, tcp_zero_win, duracao_s, tamanho_bytes = res_native
+    else:
+        total_pacotes = int(run_cmd(f"tcpdump -nn -r {pcap_file} 2>/dev/null | wc -l") or 0)
+        connect_pkts = int(run_cmd(f"tcpdump -nn -r {pcap_file} 'tcp[((tcp[12:1] & 0xf0) >> 2):1] = 0x10' 2>/dev/null | wc -l") or 0)
+        publish_pkts = int(run_cmd(f"tcpdump -nn -r {pcap_file} '(tcp[((tcp[12:1] & 0xf0) >> 2):1] & 0xf0) = 0x30' 2>/dev/null | wc -l") or 0)
+        pingreq_pkts = int(run_cmd(f"tcpdump -nn -r {pcap_file} 'tcp[((tcp[12:1] & 0xf0) >> 2):1] = 0xc0' 2>/dev/null | wc -l") or 0)
+        tcp_zero_win = int(run_cmd(f"tcpdump -nn -r {pcap_file} 'tcp[14:2] = 0' 2>/dev/null | wc -l") or 0)
+        duracao_s, tamanho_bytes = obter_duracao_e_tamanho(pcap_file) if os.path.exists(pcap_file) else (1.0, 1)
+
     vazao_pps = total_pacotes / duracao_s if duracao_s > 0 else 0.0
     vazao_kbps = ((tamanho_bytes * 8) / (duracao_s * 1000)) if duracao_s > 0 else 0.0
 
     total_mqtt = connect_pkts + publish_pkts + pingreq_pkts
     r_payload = ((publish_pkts / total_mqtt) * 100.0) if total_mqtt > 0 else 0.0
 
-    # 3. Métricas de Aplicação e Log
     msgs_entregues = int(run_cmd(f"grep -c 'iot/' {log_msg}") or 0) if os.path.exists(log_msg) else 0
     taxa_perda_telemetria = (((publish_pkts - msgs_entregues) / publish_pkts) * 100.0) if publish_pkts > 0 else 0.0
 
@@ -158,7 +248,7 @@ def gerar(defesa, cenario):
     cap_info = run_cmd(f"capinfos -d -M -u {pcap_file} 2>/dev/null") if os.path.exists(pcap_file) else "Sem PCAP"
     data_hora = run_cmd("date '+%Y-%m-%d %H:%M:%S'")
 
-    # 5. Construção do Documento em Markdown
+    # Documento Markdown
     doc = []
     doc.append(f"# 📊 Relatório Experimental — {titulo_cenario}\n")
     doc.append(f"**Data e Hora da Análise:** {data_hora}")
@@ -208,12 +298,11 @@ def gerar(defesa, cenario):
     with open(output_report, "w", encoding="utf-8") as f:
         f.write("\n".join(doc))
 
-    print(f"[✓] Relatório gerado com SUCESSO em: {output_report}\n")
+    print(f"[✓] Salvo em: {output_report}\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gerador Unificado de Relatórios por Cenário")
     parser.add_argument("defesa", help="Mecanismo de defesa (off, iptables, stateless, stateful, dfa)")
     parser.add_argument("cenario", help="Cenário do experimento (legitimo, atacante, todos)")
-    
     args = parser.parse_args()
     gerar(args.defesa, args.cenario)
