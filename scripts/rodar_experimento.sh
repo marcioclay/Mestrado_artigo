@@ -81,7 +81,7 @@ sleep 1
 if [[ "$CENARIO" == "atacante" || "$CENARIO" == "todos" ]]; then
     echo "[5/8] Garantindo pool de IPs e disparando Ataque SlowTT Multi-Bot (31 IPs)..."
     docker exec clab-seg-atacante bash -c "for i in \$(seq 21 50); do ip addr add 10.0.1.\$i/24 dev eth1 2>/dev/null || true; done"
-    docker exec -d clab-seg-atacante bash -c "python3 /scripts/slowtt_attack.py -c 310 -wt 15"
+    docker exec -d clab-seg-atacante bash -c "python3 /scripts/slowtt_attack.py -c 1100 -wt 15"
 else
     echo "[5/8] Pulo: Ataque desativado."
 fi
