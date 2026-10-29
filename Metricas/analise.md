@@ -1,3 +1,30 @@
+| Defesa | Cenário | CPU (Gateway) | Nconn | Nconn (Pico) | CONNECT | PINGREQ | Perda Telemetria | Disp. | Scheck | TPR | FPR |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| OFF | Legítimo | 0.00% | 5 | 298 | 37 | 50.00% | 100.0% | 100.0% | 0.0% | — | — |
+| OFF | Atacante | 0.00% | 1025 | 1,351 | 39,992 | 0.00% | 5.8% | 0.0% | 0.0% | — | — |
+| OFF | Todos | 0.00% | 1025 | 1,357 | 39,752 | 49.51% | 8.3% | 0.0% | 0.0% | — | — |
+| IPTables | Legítimo | 0.00% | 2 | 296 | 0 | 0.00% | 100.0% | 100.0% | 0.0% | — | — |
+| IPTables | Atacante | 0.00% | 158 | 450 | 0 | 0.00% | 100.0% | 100.0% | 0.0% | — | — |
+| IPTables | Todos | 0.00% | 159 | 162 | 28 | 49.14% | 3.9% | 100.0% | 0.0% | — | — |
+| Stateful | Legítimo | 0.00% | 3 | 297 | 9 | 0.00% | 100.0% | 100.0% | 12.5% | — | — |
+| Stateful | Atacante | 0.00% | 1025 | 1,371 | 155 | 0.00% | 5.8% | 0.0% | 12.5% | — | — |
+| Stateful | Todos | 0.00% | 1025 | 1,392 | 189 | 40.34% | 53.9% | 0.0% | 12.5% | — | — |
+| DFA | Legítimo | 0.00% | 3 | 4 | 0 | 0.00% | 2.9%* | 100.0% | 0.0% | — | — |
+| DFA | Atacante | 0.00% | 95 | 96 | 0 | 0.00% | 2.9%* | 100.0% | 0.0% | — | — |
+| DFA | Todos | 0.00% | 98 | 393 | 33 | 40.35% | 100.0% | 100.0% | 0.0% | — | — |
+
+
+
+
+
+
+
+
+
+
+
+
+
 SlowTT e SlowITe são ataques de Negação de Serviço (DoS) inovadores da categoria Slow DoS Attacks (SDA), projetados especificamente para atingir o protocolo MQTT em redes de Internet das Coisas (IoT). Desenvolvidos pelos pesquisadores Ivan Vaccari, Maurizio Aiello e Enrico Cambiaso em 2020, esses ataques exploram vulnerabilidades nativas na estrutura do protocolo MQTT.
 Abaixo está o detalhamento de como essas ameaças funcionam:
 
