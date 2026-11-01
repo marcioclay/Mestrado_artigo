@@ -5,19 +5,19 @@
 ### Cenário Legítimo
 
 ```bash
-./rodar_experimento_2.sh --off --legitimo --duracao 600
+./rodar_experimento.sh --off --legitimo --duracao 600
 ```
 
 ### Cenário Atacante
 
 ```bash
-./rodar_experimento_2.sh --off --atacante --duracao 600
+./rodar_experimento.sh --off --atacante --duracao 600
 ```
 
 ### Cenário Todos (Misto)
 
 ```bash
-./rodar_experimento_2.sh --off --todos --duracao 600
+./rodar_experimento.sh --off --todos --duracao 600
 ```
 
 ---
@@ -27,19 +27,19 @@
 ### Cenário Legítimo
 
 ```bash
-./rodar_experimento_2.sh --iptables --legitimo --duracao 600
+./rodar_experimento.sh --iptables --legitimo --duracao 600
 ```
 
 ### Cenário Atacante
 
 ```bash
-./rodar_experimento_2.sh --iptables --atacante --duracao 600
+./rodar_experimento.sh --iptables --atacante --duracao 600
 ```
 
 ### Cenário Todos (Misto)
 
 ```bash
-./rodar_experimento_2.sh --iptables --todos --duracao 600
+./rodar_experimento.sh --iptables --todos --duracao 600
 ```
 
 ---
@@ -49,19 +49,19 @@
 ### Cenário Legítimo
 
 ```bash
-./rodar_experimento_2.sh --stateful --legitimo --duracao 600
+./rodar_experimento.sh --stateful --legitimo --duracao 600
 ```
 
 ### Cenário Atacante
 
 ```bash
-./rodar_experimento_2.sh --stateful --atacante --duracao 600
+./rodar_experimento.sh --stateful --atacante --duracao 600
 ```
 
 ### Cenário Todos (Misto)
 
 ```bash
-./rodar_experimento_2.sh --stateful --todos --duracao 600
+./rodar_experimento.sh --stateful --todos --duracao 600
 ```
 
 ---
@@ -71,19 +71,19 @@
 ### Cenário Legítimo
 
 ```bash
-./rodar_experimento_2.sh --dfa --legitimo --duracao 600
+./rodar_experimento.sh --dfa --legitimo --duracao 600
 ```
 
 ### Cenário Atacante
 
 ```bash
-./rodar_experimento_2.sh --dfa --atacante --duracao 600
+./rodar_experimento.sh --dfa --atacante --duracao 600
 ```
 
 ### Cenário Todos (Misto)
 
 ```bash
-./rodar_experimento_2.sh --dfa --todos --duracao 600
+./rodar_experimento.sh --dfa --todos --duracao 600
 ```
 
 ---
@@ -95,5 +95,5 @@ Caso também esteja utilizando a opção `stateless` nos testes, basta substitui
 ### Exemplo com Stateless
 
 ```bash
-./rodar_experimento_2.sh --stateless --todos --duracao 600
+./rodar_experimento.sh --stateless --todos --duracao 600
 ```
