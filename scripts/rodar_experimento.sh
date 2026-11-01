@@ -76,7 +76,7 @@ echo "[2/9] Aplicando defesa no Gateway ($DEFESA)..."
 
 # [3/9] Captura tcpdump e Log MQTT
 echo "[3/9] Iniciando captura tcpdump na interface eth1 ($CONTAINER_PCAP)..."
-docker exec -d clab-seg-gateway bash -c "tcpdump -i eth1 -n 'tcp port 1883' -w ${CONTAINER_PCAP} >/dev/null 2>&1"
+docker exec -d clab-seg-gateway bash -c "tcpdump -i eth0 -n 'tcp port 1883' -w ${CONTAINER_PCAP} >/dev/null 2>&1"
 docker exec -d clab-seg-mqtt bash -c "mosquitto_sub -h 10.0.2.10 -t 'iot/#' -v > /scripts/mensagens_recebidas.log 2>&1"
 
 # [4/9] Monitor de Disponibilidade (S_check) em container dedicado
