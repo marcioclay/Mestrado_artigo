@@ -1,5 +1,11 @@
 # Comandos para Todos os Cenários por Defesa
 
+```
+# Instalar tshark
+sudo apt-get update
+sudo apt-get install -y tshark
+```
+
 ## 1. Defesa: OFF (Baseline / Sem Defesa)
 
 ### Cenário Legítimo
