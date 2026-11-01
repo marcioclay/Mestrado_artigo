@@ -46,6 +46,13 @@ topology:
       binds:
         - ./scripts:/scripts
 
+    # Dispositivo 4: Monitor de Disponibilidade (S_check) - isolado dos sensores de aplicação
+    monitor-scheck:
+      kind: linux
+      image: ubuntu:latest
+      binds:
+        - ./scripts:/scripts
+
     # Dispositivo Atacante (Gerador do SlowTT)
     atacante:
       kind: linux
@@ -60,6 +67,7 @@ topology:
     - endpoints: ["sensor-jitter:eth1", "br-lan:eth3"]
     - endpoints: ["atacante:eth1", "br-lan:eth4"]
     - endpoints: ["gateway:eth2", "br-lan:eth5"]
+    - endpoints: ["monitor-scheck:eth1", "br-lan:eth6"]
 
     # Conexão DMZ: Gateway <-> Broker MQTT (Rede 10.0.2.0/24)
     - endpoints: ["gateway:eth1", "mqtt:eth1"]
