@@ -3,20 +3,20 @@
 
 ## 📊 Tabela Consolidada de Resultados Experimentais
 
-| Mecanismo de Defesa | Cenário de Teste | Pico de Soquetes (Nconn) | PDR do Atacante (%) | Perda de Telemetria (%) | Vazão Média (pps) | Latência P95 (ms) |
+| Mecanismo de Defesa | Cenário de Teste | Numero conexões | PDR do Atacante (%) | Perda de Telemetria (%) | Vazão Média (pps) | Latência P95 (ms) |
 |---|---|---:|---:|---:|---:|---:|
 | OFF (Baseline) | Legítimo | 5 | — | 0.00% | 0.48 | 3.83 |
-| OFF (Baseline) | Atacante | 1024 | 6.91% | — | 73.86 | — |
-| OFF (Baseline) | Todos | 1024 | 7.18% | 0.97% | 73.50 | 3.23 |
+| OFF (Baseline) | Atacante | 1024 | 93.09% | — | 73.86 | — |
+| OFF (Baseline) | Todos | 1024 | 92.82% | 0.97% | 73.50 | 3.23 |
 | IPTables | Legítimo | 5 | — | 0.00% | 0.48 | 4.81 |
-| IPTables | Atacante | 157 | 85.91% | — | 246.11 | — |
-| IPTables | Todos | 158 | 85.91% | 0.00% | 1.24 | 4.49 |
+| IPTables | Atacante | 157 | 14.09% | — | 246.11 | — |
+| IPTables | Todos | 158 | 14.91% | 0.00% | 1.24 | 4.49 |
 | Stateful (Heurístico) | Legítimo | 5 | — | 38.89% | 0.68 | 4.58 |
-| Stateful (Heurístico) | Atacante | 1024 | 6.91% | — | 203.13 | — |
-| Stateful (Heurístico) | Todos | 1024 | 7.18% | 40.19% | 11.46 | 4.76 |
+| Stateful (Heurístico) | Atacante | 1024 | 93.09% | — | 203.13 | — |
+| Stateful (Heurístico) | Todos | 1024 | 92.82% | 40.19% | 11.46 | 4.76 |
 | DFA (Proposta) | Legítimo | 3 | — | 0.00% | 4.37 | 6.87 |
-| DFA (Proposta) | Atacante | 126 | 91.55% | — | 4.69 | — |
-| DFA (Proposta) | Todos | 127 | 91.55% | 0.00% | 1.19 | 7.23 | 
+| DFA (Proposta) | Atacante | 126 | 8.55% | — | 4.69 | — |
+| DFA (Proposta) | Todos | 127 | 8.45% | 0.00% | 1.19 | 7.23 | 
 
 --- 
 
