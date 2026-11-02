@@ -3,6 +3,32 @@
 
 ## 📊 Tabela Consolidada de Resultados Experimentais
 
+
+| Mecanismo de Defesa | Cenário de Teste | Numero conexões | Packet Delivery Attack | Falso Positivo Sensor | Vazão Média (pps) | Latência P95 (ms) | CPU Gateway (%) | RAM Gateway (MiB) | CPU Broker (%) | RAM Broker (MiB) |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| OFF (Baseline) | Legítimo | 5 | — | 0.00% | 0.48 | 3.83 | 0.02 | 23.41 | 0.20 | 25.73 |
+| OFF (Baseline) | Atacante | 1024 | 93.09% | — | 73.86 | — | 0.16 | 23.70 | 3.24 | 30.56 |
+| OFF (Baseline) | Todos | 1024 | 92.82% | 0.97% | 73.50 | 3.23 | 0.12 | 23.79 | 2.22 | 30.25 |
+| IPTables | Legítimo | 5 | — | 0.00% | 0.48 | 4.81 | 0.03 | 23.70 | 0.19 | 25.62 |
+| IPTables | Atacante | 157 | 14.09% | — | 246.11 | — | 0.02 | 23.74 | 1.76 | 26.12 |
+| IPTables | Todos | 158 | 14.91% | 0.00% | 1.24 | 4.49 | 0.12 | 23.73 | 0.73 | 23.00 |
+| Stateful (Heurístico) | Legítimo | 5 | — | 38.89% | 0.68 | 4.58 | 0.05 | 26.22 | 0.26 | 22.29 |
+| Stateful (Heurístico) | Atacante | 1024 | 93.09% | — | 203.13 | — | 0.38 | 26.47 | 6.85 | 26.95 |
+| Stateful (Heurístico) | Todos | 1024 | 92.82% | 40.19% | 11.46 | 4.76 | 0.23 | 26.24 | 2.36 | 29.26 |
+| DFA (Proposta) | Legítimo | 3 | — | 0.00% | 4.37 | 6.87 | 0.10 | 27.63 | 0.19 | 27.26 |
+| DFA (Proposta) | Atacante | 126 | 8.55% | — | 4.69 | — | 0.14 | 27.60 | 3.84 | 22.85 |
+| DFA (Proposta) | Todos | 127 | 8.45% | 0.00% | 1.19 | 7.23 | 0.14 | 27.83 | 1.60 | 22.74 |
+
+
+
+
+
+
+
+
+
+---
+
 | Mecanismo de Defesa | Cenário de Teste | Numero conexões | Packet Delivery Attack | Falso Positivo Sensor | Vazão Média (pps) | Latência P95 (ms) |
 |---|---|---:|---:|---:|---:|---:|
 | OFF (Baseline) | Legítimo | 5 | — | 0.00% | 0.48 | 3.83 |
