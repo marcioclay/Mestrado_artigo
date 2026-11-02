@@ -11,18 +11,34 @@ if ! ip link show br-lan > /dev/null 2>&1; then
     sudo ip link set dev br-lan up
 fi
 
+<<<<<<< HEAD
+echo "[1/5] Subindo a topologia no Containerlab..."
+sudo clab deploy -t "$TOPOLOGIA_FILE" --reconfigure
+
+echo "[2/5] Configurando rede e dependências no Gateway..."
+=======
 echo "[1/5] Subindo a topologia no Containerlab..."
 sudo clab deploy -t "$TOPOLOGIA_FILE" --reconfigure
 
 echo "[2/5] Configurando rede e dependências no Gateway..."
 # Ajustado para usar eth0 (interface real detectada no container do gateway) com IPs secundários para LAN e DMZ
+>>>>>>> 2fb6aabbf3e0c8b7c6d980f8ea748d018f64b7e8
 docker exec clab-seg-gateway bash -c "
+<<<<<<< HEAD
+    sysctl -w net.ipv4.ip_forward=1 && \
+    ip addr add 10.0.1.1/24 dev eth2 2>/dev/null || true && \
+    ip addr add 10.0.2.1/24 dev eth1 2>/dev/null || true && \
+    apt-get update -qq && \
+    apt-get install -y -qq iptables tcpdump tshark python3 python3-pip python3-paho-mqtt 2>/dev/null || true
+"
+=======
     sysctl -w net.ipv4.ip_forward=1 && \
     ip addr add 10.0.1.1/24 dev eth0 2>/dev/null || true && \
     ip addr add 10.0.2.1/24 dev eth0 2>/dev/null || true && \
     apt-get update -qq && \
     apt-get install -y -qq iptables tcpdump tshark python3 python3-pip python3-paho-mqtt 2>/dev/null || true
 "
+>>>>>>> 2fb6aabbf3e0c8b7c6d980f8ea748d018f64b7e8
 
 echo "[3/5] Configurando Broker MQTT..."
 docker exec clab-seg-mqtt bash -c "
