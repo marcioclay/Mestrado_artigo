@@ -3,7 +3,7 @@
 
 ## 📊 Tabela Consolidada de Resultados Experimentais
 
-| Mecanismo de Defesa | Cenário de Teste | Numero conexões | Packet Delivery Attack | Falso Positivo | Vazão Média (pps) | Latência P95 (ms) |
+| Mecanismo de Defesa | Cenário de Teste | Numero conexões | Packet Delivery Attack | Falso Positivo Sensor | Vazão Média (pps) | Latência P95 (ms) |
 |---|---|---:|---:|---:|---:|---:|
 | OFF (Baseline) | Legítimo | 5 | — | 0.00% | 0.48 | 3.83 |
 | OFF (Baseline) | Atacante | 1024 | 93.09% | — | 73.86 | — |
