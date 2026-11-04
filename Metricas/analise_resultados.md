@@ -1,8 +1,29 @@
 
 
+## 📊 Tabela Comparativa Consolidada dos Ensaios (20 Minutos)
 
+| Mecanismo de Defesa | Cenário | Pico de Conexões (Nconn) | Sucesso do Ataque (PDR Atacante) | Perda de Dados Legítimos (Dano Colateral) | Latência Média / P95 (Fim-a-Fim) | CPU Gateway / Broker |
+|---|---|---:|---:|---:|---:|---:|
+| OFF (Baseline) | Atacante | 1024 (Saturado) | 93.09% | — | — | 2.94% / 26.32% |
+| IPTables | Legítimo | 3 | — | 50.60% | 3.55 ms / 7.13 ms | 3.33% / 23.31% |
+| IPTables | Atacante | 155 | 14.09% | — | — | 12.46% / 19.11% |
+| IPTables | Todos | 158 | 14.09% | 48.69% | 4.01 ms / 9.95 ms | 2.10% / 25.54% |
+| Stateful (Heurístico) | Legítimo | 3 | — | 83.09% | 4.53 ms / 9.02 ms | 0.62% / 15.64% |
+| Stateful (Heurístico) | Atacante | 1024 (Saturado) | 92.82% | — | — | 2.77% / 27.14% |
+| Stateful (Heurístico) | Todos | 1024 (Saturado) | 92.82% | 84.50% | 5.90 ms / 13.09 ms | 2.77% / 27.14% |
+| DFA (Proposto) | Legítimo | 3 | — | 48.30% | 2.53 ms / 5.81 ms | 3.73% / 20.08% |
+| DFA (Proposto) | Atacante | 124 | **8.45%** | — | — | 0.05% / 9.98% |
+| DFA (Proposto) | Todos | 127 | **8.45%** | 49.07% | 2.91 ms / 8.07 ms | 2.62% / 25.22% |
+
+**Nota:** O símbolo `—` indica métrica não aplicável ou não informada.
+
+
+
+
+
+---
 ## 📊 Tabela Consolidada de Resultados Experimentais
-
+Testes feitos com 4 sensores e 31 atacantes em 10min
 
 | Mecanismo de Defesa | Cenário de Teste | Numero conexões | Packet Delivery Attack | Falso Positivo Sensor | Vazão Média (pps) | Latência P95 (ms) | CPU Gateway (%) | RAM Gateway (MiB) | CPU Broker (%) | RAM Broker (MiB) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
