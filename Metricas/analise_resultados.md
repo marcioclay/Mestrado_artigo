@@ -1,8 +1,5 @@
 
 
-## 📊 Tabela Comparativa Consolidada dos Ensaios (20 Minutos)
-
-
 ## 📊 Tabela Comparativa Consolidada Completa (20 Minutos)
 
 | Mecanismo de Defesa | Cenário | Pico de Conexões (Nconn) | Sucesso do Ataque (PDR Atacante) | Perda de Dados Legítimos (Dano Colateral) | Latência Média / P95 (Fim-a-Fim) | CPU Gateway / Broker |
