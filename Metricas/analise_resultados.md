@@ -1,7 +1,7 @@
 
 ## Tabela Consolidada das Métricas Essenciais
 
-| Defesa | Cenário | Pico Nconn | PDR Atacante (Sucesso %) | Perda Telemetria (%) | Latência Média (ms) | Vazão (kbps) |
+| Defesa | Cenário | Pico Nconn | PDR Atacante (Sucesso %) | Falso Positivo Sensor | Latência Média (ms) | Vazão (kbps) |
 |:---|:---|---:|---:|---:|---:|---:|
 | OFF | Legítimo | 3 | — | 0,00% | 185,01 | 15,44 |
 | OFF | Atacante | 1024 | 93,09% | — | — | 155,82 |
