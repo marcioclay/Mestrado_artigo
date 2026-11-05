@@ -1,4 +1,22 @@
 
+## Tabela Consolidada das Métricas Essenciais
+
+| Defesa | Cenário | Pico Nconn | PDR Atacante (Sucesso %) | Perda Telemetria (%) | Latência Média (ms) | Vazão (kbps) |
+|:---|:---|---:|---:|---:|---:|---:|
+| OFF | Legítimo | 3 | — | 0,00% | 185,01 | 15,44 |
+| OFF | Atacante | 1024 | 93,09% | — | — | 155,82 |
+| OFF | Todos | 1024 | 92,82% | 44,55% | 7,87 | 155,35 |
+| IPTABLES | Legítimo | 3 | — | 48,11% | 2,17 | 1,45 |
+| IPTABLES | Atacante | 93 | 6,36% | — | — | 2,78 |
+| IPTABLES | Todos | 96 | 6,64% | 44,79% | 2,21 | 3,41 |
+| STATEFUL | Legítimo | 3 | — | 0,00% | 203,20 | 15,46 |
+| STATEFUL | Atacante | 1024 | 93,09% | — | — | 351,21 |
+| STATEFUL | Todos | 1024 | 92,82% | 45,45% | 1,96 | 26,79 |
+| DFA | Legítimo | 3 | — | 0,00% | 213,96 | 21,09 |
+| DFA | Atacante | 124 | 8,45% | — | — | 8,25 |
+| DFA | Todos | 127 | 8,45% | 0,00% | 191,92 | 17,89 |
+
+
 
 
 ---
