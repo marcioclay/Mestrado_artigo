@@ -1,24 +1,4 @@
 
-## 📊 Tabela Comparativa dos Resultados Experimentais
-Resultados 10 min v1
-
-| Defesa | Cenário | Pico Nconn (Soquetes) | Sucesso do Ataque (PDR Atacante) | Perda Legítima (Dano Colateral) | Latência Média / P95 | Uso CPU Broker |
-|---|---|---:|---:|---:|---:|---:|
-| OFF | Legítimo | 5 | — | 47.86% | 1.56 ms / 4.03 ms | 15.22% |
-| OFF | Atacante | 1024 | 93.09% | — | — | 26.32% |
-| OFF | Todos | 1024 | 92.82% | 49.77% | 3.64 ms / 7.20 ms | 19.80% |
-| IPTABLES | Legítimo | 3 | — | 50.60% | 3.55 ms / 7.13 ms | 23.31% |
-| IPTABLES | Atacante | 155 | 14.09% | — | — | 19.11% |
-| IPTABLES | Todos | 158 | 14.09% | 48.69% | 4.01 ms / 9.95 ms | 25.54% |
-| STATEFUL | Legítimo | 3 | — | 83.09% | 4.53 ms / 9.02 ms | 15.64% |
-| STATEFUL | Atacante | 1024 | 93.09% | — | — | 18.92% |
-| STATEFUL | Todos | 1024 | 92.82% | 84.50% | 5.90 ms / 13.09 ms | 27.14% |
-| DFA | Legítimo | 3 | — | 48.30% | 2.53 ms / 5.81 ms | 20.08% |
-| DFA | Atacante | 124 | 8.45% | — | — | 9.98% |
-| DFA | Todos | 127 | 8.45% | 49.07% | 2.91 ms / 8.07 ms | 25.22% |
-
-**Nota:** O símbolo `—` indica métrica não informada ou não aplicável. O termo `ger` após a latência do cenário legítimo DFA foi desconsiderado por aparentar ser um erro de digitação.
-
 
 
 ---
